@@ -73,7 +73,17 @@ public class SimpleTestMethodModel implements TestMethodModel {
         if (targetBackend == TargetBackend.ANY) return false;
 
         try {
-            String fileText = FileUtil.loadFile(file);
+            String fileText;
+            if (file.isDirectory()) {
+                String fileName =file.getName();
+                File realFile = new File(file, fileName + ".kt");
+                if (!realFile.exists()) return true;
+
+                fileText = FileUtil.loadFile(realFile);
+            }
+            else {
+                fileText = FileUtil.loadFile(file);
+            }
             List<String> backends = InTextDirectivesUtils.findLinesWithPrefixesRemoved(fileText, "// TARGET_BACKEND: ");
             return backends.size() > 0 && !targetBackend.name().equals(backends.get(0));
         } catch (IOException e) {
