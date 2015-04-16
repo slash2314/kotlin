@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
+import org.jetbrains.kotlin.serialization.deserialization.ClassDescriptorFactory
 import org.jetbrains.kotlin.serialization.deserialization.DeserializationComponents
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedPackageMemberScope
 import org.jetbrains.kotlin.serialization.jvm.JvmProtoBufUtil
@@ -105,7 +106,7 @@ public class DeserializerForDecompiler(val packageDirectory: VirtualFile, val di
 
     private val deserializationComponents = DeserializationComponents(
             storageManager, moduleDescriptor, classDataFinder, annotationAndConstantLoader, packageFragmentProvider,
-            ResolveEverythingToKotlinAnyLocalClassResolver, JavaFlexibleTypeCapabilitiesDeserializer
+            ResolveEverythingToKotlinAnyLocalClassResolver, JavaFlexibleTypeCapabilitiesDeserializer, ClassDescriptorFactory.EMPTY /* TODO: ? */
     )
 
     private fun createDummyPackageFragment(fqName: FqName): MutablePackageFragmentDescriptor {

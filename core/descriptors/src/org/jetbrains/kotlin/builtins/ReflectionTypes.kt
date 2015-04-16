@@ -52,6 +52,9 @@ public class ReflectionTypes(private val module: ModuleDescriptor) {
     public fun getKMemberFunction(n: Int): ClassDescriptor = find("KMemberFunction$n")
 
     public val kClass: ClassDescriptor by ClassLookup
+    public val kFunction: ClassDescriptor by ClassLookup
+    public val kMemberFunction: ClassDescriptor by ClassLookup
+    public val kExtensionFunction: ClassDescriptor by ClassLookup
     public val kTopLevelVariable: ClassDescriptor by ClassLookup
     public val kMutableTopLevelVariable: ClassDescriptor by ClassLookup
     public val kMemberProperty: ClassDescriptor by ClassLookup

@@ -20,6 +20,7 @@ import kotlin.*;
 import kotlin.jvm.functions.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.builtins.functions.BuiltInFictitiousFunctionClassFactory;
 import org.jetbrains.kotlin.descriptors.*;
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor;
 import org.jetbrains.kotlin.descriptors.annotations.Annotations;
@@ -114,10 +115,14 @@ public class KotlinBuiltIns {
                 Name.special("<built-ins module>"), Collections.<ImportPath>emptyList(), PlatformToKotlinClassMap.EMPTY
         );
 
+        LockBasedStorageManager storageManager = new LockBasedStorageManager();
+
         PackageFragmentProvider packageFragmentProvider = BuiltinsPackage.createBuiltInPackageFragmentProvider(
-                new LockBasedStorageManager(), builtInsModule,
+                storageManager, builtInsModule,
                 setOf(BUILT_INS_PACKAGE_FQ_NAME, BuiltinsPackage.getKOTLIN_REFLECT_FQ_NAME()),
-                FlexibleTypeCapabilitiesDeserializer.ThrowException.INSTANCE$, new Function1<String, InputStream>() {
+                FlexibleTypeCapabilitiesDeserializer.ThrowException.INSTANCE$,
+                new BuiltInFictitiousFunctionClassFactory(storageManager, builtInsModule),
+                new Function1<String, InputStream>() {
                     @Override
                     public InputStream invoke(String path) {
                         return KotlinBuiltIns.class.getClassLoader().getResourceAsStream(path);

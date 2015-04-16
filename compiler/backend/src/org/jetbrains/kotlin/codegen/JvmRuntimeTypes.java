@@ -39,7 +39,7 @@ import static org.jetbrains.kotlin.resolve.jvm.TopDownAnalyzerFacadeForJVM.creat
 public class JvmRuntimeTypes {
     private final ReflectionTypes reflectionTypes;
 
-    private final ClassDescriptor functionImpl;
+    private final ClassDescriptor lambda;
     private final ClassDescriptor memberFunctionImpl;
     private final ClassDescriptor extensionFunctionImpl;
 
@@ -51,7 +51,7 @@ public class JvmRuntimeTypes {
                 new FqName("kotlin.jvm.internal")
         );
 
-        this.functionImpl = createClass(kotlinJvmInternal, "FunctionImpl", "out R");
+        this.lambda = createClass(kotlinJvmInternal, "Lambda", "out R");
         this.memberFunctionImpl = createClass(kotlinJvmInternal, "MemberFunctionImpl", "in T", "out R");
         this.extensionFunctionImpl = createClass(kotlinJvmInternal, "ExtensionFunctionImpl", "in T", "out R");
     }
@@ -96,7 +96,7 @@ public class JvmRuntimeTypes {
             typeArguments.add(new TypeProjectionImpl(receiverParameter.getType()));
         }
         else {
-            classDescriptor = functionImpl;
+            classDescriptor = lambda;
         }
 
         //noinspection ConstantConditions
@@ -128,20 +128,20 @@ public class JvmRuntimeTypes {
         List<TypeProjection> typeArguments = new ArrayList<TypeProjection>(2);
 
         ClassDescriptor classDescriptor;
-        JetType receiverType;
+        ClassDescriptor kFunctionClass;
         if (extensionReceiver != null) {
             classDescriptor = extensionFunctionImpl;
-            receiverType = extensionReceiver.getType();
-            typeArguments.add(new TypeProjectionImpl(receiverType));
+            kFunctionClass = reflectionTypes.getkExtensionFunction();
+            typeArguments.add(new TypeProjectionImpl(extensionReceiver.getType()));
         }
         else if (dispatchReceiver != null) {
             classDescriptor = memberFunctionImpl;
-            receiverType = dispatchReceiver.getType();
-            typeArguments.add(new TypeProjectionImpl(receiverType));
+            kFunctionClass = reflectionTypes.getkMemberFunction();
+            typeArguments.add(new TypeProjectionImpl(dispatchReceiver.getType()));
         }
         else {
-            classDescriptor = functionImpl;
-            receiverType = null;
+            classDescriptor = lambda;
+            kFunctionClass = reflectionTypes.getkFunction();
         }
 
         //noinspection ConstantConditions
@@ -155,12 +155,12 @@ public class JvmRuntimeTypes {
                 classDescriptor.getMemberScope(typeArguments)
         );
 
-        JetType kFunctionType = reflectionTypes.getKFunctionType(
-                Annotations.EMPTY,
-                receiverType,
-                ExpressionTypingUtils.getValueParametersTypes(descriptor.getValueParameters()),
-                descriptor.getReturnType(),
-                extensionReceiver != null
+        JetType kFunctionType = new JetTypeImpl(
+                kFunctionClass.getDefaultType().getAnnotations(),
+                kFunctionClass.getTypeConstructor(),
+                false,
+                typeArguments,
+                kFunctionClass.getMemberScope(typeArguments)
         );
 
         return Arrays.asList(functionImplType, kFunctionType);
