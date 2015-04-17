@@ -18,24 +18,15 @@ package org.jetbrains.kotlin.idea.decompiler.textBuilder
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
-import org.jetbrains.kotlin.descriptors.PackageFragmentProvider
-import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
-import org.jetbrains.kotlin.descriptors.impl.MutablePackageFragmentDescriptor
 import org.jetbrains.kotlin.load.kotlin.BinaryClassAnnotationAndConstantLoaderImpl
 import org.jetbrains.kotlin.load.kotlin.JavaFlexibleTypeCapabilitiesDeserializer
 import org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache
 import org.jetbrains.kotlin.load.kotlin.PackageClassUtils
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.serialization.deserialization.DeserializationComponents
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedPackageMemberScope
 import org.jetbrains.kotlin.serialization.jvm.JvmProtoBufUtil
-import org.jetbrains.kotlin.storage.LockBasedStorageManager
 
 public fun DeserializerForDecompiler(classFile: VirtualFile): DeserializerForDecompiler {
     val kotlinClass = KotlinBinaryClassCache.getKotlinBinaryClass(classFile)
@@ -44,14 +35,10 @@ public fun DeserializerForDecompiler(classFile: VirtualFile): DeserializerForDec
     return DeserializerForDecompiler(classFile.getParent()!!, packageFqName)
 }
 
-public class DeserializerForDecompiler(val packageDirectory: VirtualFile, val directoryPackageFqName: FqName) : ResolverForDecompiler {
-
-    private val moduleDescriptor =
-            ModuleDescriptorImpl(Name.special("<module for building decompiled sources>"), listOf(), PlatformToKotlinClassMap.EMPTY)
-
-    private fun createDummyModule(name: String) = ModuleDescriptorImpl(Name.special("<$name>"), listOf(), PlatformToKotlinClassMap.EMPTY)
-
-    override fun resolveTopLevelClass(classId: ClassId) = deserializationComponents.deserializeClass(classId)
+public class DeserializerForDecompiler(
+        packageDirectory: VirtualFile,
+        directoryPackageFqName: FqName
+) : DeserializerForDecompilerBase(packageDirectory, directoryPackageFqName) {
 
     override fun resolveDeclarationsInPackage(packageFqName: FqName): Collection<DeclarationDescriptor> {
         assert(packageFqName == directoryPackageFqName) { "Was called for $packageFqName but only $directoryPackageFqName is expected" }
@@ -72,45 +59,15 @@ public class DeserializerForDecompiler(val packageDirectory: VirtualFile, val di
     }
 
     private val classFinder = DirectoryBasedClassFinder(packageDirectory, directoryPackageFqName)
-    private val classDataFinder = DirectoryBasedDataFinder(classFinder, LOG)
+    override val classDataFinder = DirectoryBasedDataFinder(classFinder, LOG)
 
-    private val storageManager = LockBasedStorageManager.NO_LOCKS
-
-    private val annotationAndConstantLoader =
+    override val annotationAndConstantLoader =
             BinaryClassAnnotationAndConstantLoaderImpl(moduleDescriptor, storageManager, classFinder, LoggingErrorReporter(LOG))
 
-    private val packageFragmentProvider = object : PackageFragmentProvider {
-        override fun getPackageFragments(fqName: FqName): List<PackageFragmentDescriptor> {
-            return listOf(createDummyPackageFragment(fqName))
-        }
-
-        override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName> {
-            throw UnsupportedOperationException("This method is not supposed to be called.")
-        }
-    }
-
-    init {
-        moduleDescriptor.initialize(packageFragmentProvider)
-        moduleDescriptor.addDependencyOnModule(moduleDescriptor)
-        moduleDescriptor.addDependencyOnModule(KotlinBuiltIns.getInstance().getBuiltInsModule())
-        val moduleContainingMissingDependencies = createDummyModule("module containing missing dependencies for decompiled sources")
-        moduleContainingMissingDependencies.addDependencyOnModule(moduleContainingMissingDependencies)
-        moduleContainingMissingDependencies.initialize(
-                PackageFragmentProviderForMissingDependencies(moduleContainingMissingDependencies)
-        )
-        moduleDescriptor.addDependencyOnModule(moduleContainingMissingDependencies)
-        moduleDescriptor.seal()
-        moduleContainingMissingDependencies.seal()
-    }
-
-    private val deserializationComponents = DeserializationComponents(
+    override val deserializationComponents: DeserializationComponents = DeserializationComponents(
             storageManager, moduleDescriptor, classDataFinder, annotationAndConstantLoader, packageFragmentProvider,
             ResolveEverythingToKotlinAnyLocalClassResolver, JavaFlexibleTypeCapabilitiesDeserializer
     )
-
-    private fun createDummyPackageFragment(fqName: FqName): MutablePackageFragmentDescriptor {
-        return MutablePackageFragmentDescriptor(moduleDescriptor, fqName)
-    }
 
     companion object {
         private val LOG = Logger.getInstance(javaClass<DeserializerForDecompiler>())
