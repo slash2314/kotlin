@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.types.checker.JetTypeChecker;
 import java.io.InputStream;
 import java.util.*;
 
+import static kotlin.KotlinPackage.setOf;
 import static kotlin.KotlinPackage.single;
 import static org.jetbrains.kotlin.builtins.PrimitiveType.*;
 import static org.jetbrains.kotlin.resolve.DescriptorUtils.getFqName;
@@ -114,7 +115,8 @@ public class KotlinBuiltIns {
         );
 
         PackageFragmentProvider packageFragmentProvider = BuiltinsPackage.createBuiltInPackageFragmentProvider(
-                new LockBasedStorageManager(), builtInsModule, Collections.singleton(BUILT_INS_PACKAGE_FQ_NAME),
+                new LockBasedStorageManager(), builtInsModule,
+                setOf(BUILT_INS_PACKAGE_FQ_NAME, BuiltinsPackage.getKOTLIN_REFLECT_FQ_NAME()),
                 FlexibleTypeCapabilitiesDeserializer.ThrowException.INSTANCE$, new Function1<String, InputStream>() {
                     @Override
                     public InputStream invoke(String path) {
