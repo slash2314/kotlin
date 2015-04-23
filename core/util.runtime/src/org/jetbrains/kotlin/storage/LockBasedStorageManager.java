@@ -16,9 +16,8 @@
 
 package org.jetbrains.kotlin.storage;
 
-import kotlin.Function0;
-import kotlin.Function1;
-import kotlin.Unit;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.utils.UtilsPackage;

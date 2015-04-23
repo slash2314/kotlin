@@ -4,7 +4,8 @@ import static kotlin.KotlinPackage.*;
 import static kotlin.util.UtilPackage.*;
 
 import junit.framework.TestCase;
-import kotlin.Function1;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 
 import java.util.Collection;
 import java.util.List;

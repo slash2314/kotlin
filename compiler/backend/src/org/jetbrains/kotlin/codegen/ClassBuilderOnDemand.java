@@ -16,7 +16,8 @@
 
 package org.jetbrains.kotlin.codegen;
 
-import kotlin.Function0;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.kotlin.storage.NotNullLazyValue;

@@ -16,7 +16,8 @@
 
 package org.jetbrains.kotlin.storage;
 
-import kotlin.Function1;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 

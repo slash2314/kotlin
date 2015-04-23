@@ -16,8 +16,8 @@
 
 package org.jetbrains.kotlin.load.java.components;
 
-import kotlin.Function1;
-import kotlin.Unit;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor;

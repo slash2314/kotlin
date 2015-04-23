@@ -29,7 +29,8 @@ import org.jetbrains.kotlin.js.translate.context.TranslationContext;
 import org.jetbrains.kotlin.resolve.inline.InlineStrategy;
 
 import java.util.*;
-import kotlin.Function1;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 
 import static org.jetbrains.kotlin.js.inline.FunctionInlineMutator.canBeExpression;
 import static org.jetbrains.kotlin.js.inline.FunctionInlineMutator.getInlineableCallReplacement;

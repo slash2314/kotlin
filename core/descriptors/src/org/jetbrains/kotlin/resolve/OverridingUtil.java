@@ -16,9 +16,8 @@
 
 package org.jetbrains.kotlin.resolve;
 
-import kotlin.Function1;
-import kotlin.KotlinPackage;
-import kotlin.Unit;
+import kotlin.*;
+import kotlin.jvm.functions.*;
 import kotlin.jvm.KotlinSignature;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
