@@ -21,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.codegen.*;
 import org.jetbrains.kotlin.codegen.binding.CodegenBinding;
+import org.jetbrains.kotlin.codegen.extensions.ClassBuilderFactoryInterceptExtension;
+import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension;
 import org.jetbrains.kotlin.codegen.intrinsics.IntrinsicMethods;
 import org.jetbrains.kotlin.codegen.optimization.OptimizationClassBuilderFactory;
 import org.jetbrains.kotlin.codegen.when.MappingsClassesForWhenByEnum;
@@ -184,9 +186,18 @@ public class GenerationState {
             builderFactory = new OptimizationClassBuilderFactory(builderFactory);
         }
 
+        ClassBuilderFactory interceptBuilderFactory = new BuilderFactoryForDuplicateSignatureDiagnostics(
+                builderFactory, this.bindingContext, diagnostics);
+
+        Collection<ClassBuilderFactoryInterceptExtension> interceptExtensions =
+                ClassBuilderFactoryInterceptExtension.Companion.getInstances(project);
+
+        for (ClassBuilderFactoryInterceptExtension extension : interceptExtensions) {
+            interceptBuilderFactory = extension.interceptClassBuilderFactory(interceptBuilderFactory, bindingContext, diagnostics);
+        }
+
         this.diagnostics = diagnostics;
-        this.classFileFactory = new ClassFileFactory(this, new BuilderFactoryForDuplicateSignatureDiagnostics(
-                builderFactory, this.bindingContext, diagnostics));
+        this.classFileFactory = new ClassFileFactory(this, interceptBuilderFactory);
 
         this.disableCallAssertions = disableCallAssertions;
         this.disableParamAssertions = disableParamAssertions;
@@ -297,6 +308,12 @@ public class GenerationState {
     }
 
     public void destroy() {
+        Collection<ClassBuilderFactoryInterceptExtension> interceptExtensions =
+                ClassBuilderFactoryInterceptExtension.Companion.getInstances(project);
+
+        for (ClassBuilderFactoryInterceptExtension extension : interceptExtensions) {
+            extension.onDestroy();
+        }
     }
 
     @Nullable
