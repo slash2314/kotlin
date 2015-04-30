@@ -99,8 +99,8 @@ class FrameVisitor(context: EvaluationContextImpl) {
     }
 
     private fun isFunctionType(type: Type?): Boolean {
-        if (type == null || AsmUtil.isPrimitive(type)) return false
-        return type.getInternalName().startsWith("kotlin/Function") || type.getInternalName().startsWith("kotlin/ExtensionFunction")
+        return type?.getSort() == Type.OBJECT &&
+               type!!.getInternalName().startsWith("kotlin/jvm/functions/Function")
     }
 
     private fun findLocalVariable(name: String, asmType: Type?, checkType: Boolean): Value? {

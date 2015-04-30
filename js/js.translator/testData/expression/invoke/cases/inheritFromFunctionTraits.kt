@@ -8,24 +8,22 @@ class Baz : Function2<Int, Boolean, String> {
     override fun invoke(i: Int, b: Boolean) = "Baz.invoke($i, $b)"
 }
 
-class ExtBar : ExtensionFunction0<String, String> {
-    override fun String.invoke() = "ExtBar.invoke($this)"
+class ExtBar : [extension] Function1<String, String> {
+    override fun invoke(s: String) = "ExtBar.invoke($s)"
 }
 
-class ExtBaz : ExtensionFunction2<String, Int, Boolean, String> {
-    override fun String.invoke(i: Int, b: Boolean) = "ExtBaz.invoke($this, $i, $b)"
+class ExtBaz : [extension] Function3<String, Int, Boolean, String> {
+    override fun invoke(s: String, i: Int, b: Boolean) = "ExtBaz.invoke($s, $i, $b)"
 }
 
 class Mixed :
         Function1<Int, String>,
-        Function2<Int, Boolean, String>,
-        ExtensionFunction1<Int, Boolean, String>,
-        ExtensionFunction2<Int, Int, Boolean, String>
+        [extension] Function2<Int, Boolean, String>,
+        [extension] Function3<Int, Int, Boolean, String>
 {
     override fun invoke(i: Int) = "Mixed.invoke($i)"
     override fun invoke(i: Int, b: Boolean) = "Mixed.invoke($i, $b)"
-    override fun Int.invoke(b: Boolean) = "ext Mixed.invoke($this, $b)"
-    override fun Int.invoke(i: Int, b: Boolean) = "ext Mixed.invoke($this, $i, $b)"
+    override fun invoke(s: Int, i: Int, b: Boolean) = "Mixed.invoke($s, $i, $b)"
 }
 
 fun box(): String {
@@ -42,8 +40,8 @@ fun box(): String {
 
     assertEquals("Mixed.invoke(45)", mixed(45))
     assertEquals("Mixed.invoke(552, true)", mixed(552, true))
-    assertEquals("ext Mixed.invoke(21, true)", 21.mixed(true))
-    assertEquals("ext Mixed.invoke(29, 304, false)", 29.mixed(304, false))
+    assertEquals("Mixed.invoke(21, true)", 21.mixed(true))
+    assertEquals("Mixed.invoke(29, 304, false)", 29.mixed(304, false))
 
     return "OK"
 }

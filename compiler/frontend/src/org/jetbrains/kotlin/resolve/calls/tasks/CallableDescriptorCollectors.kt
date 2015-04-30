@@ -16,7 +16,11 @@
 
 package org.jetbrains.kotlin.resolve.calls.tasks.collectors
 
+import org.jetbrains.kotlin.builtins.functions.FunctionClassDescriptor
+import org.jetbrains.kotlin.builtins.functions.FunctionInvokeDescriptor
 import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.descriptors.impl.SimpleFunctionDescriptorImpl
+import org.jetbrains.kotlin.descriptors.impl.ValueParameterDescriptorImpl
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.BindingTrace
 import org.jetbrains.kotlin.resolve.DescriptorUtils.isStaticNestedClass
@@ -26,6 +30,8 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.hasClassObjectType
 import org.jetbrains.kotlin.resolve.scopes.JetScope
 import org.jetbrains.kotlin.types.ErrorUtils
 import org.jetbrains.kotlin.types.JetType
+import org.jetbrains.kotlin.types.TypeSubstitutor
+import org.jetbrains.kotlin.types.expressions.OperatorConventions
 
 public trait CallableDescriptorCollector<D : CallableDescriptor> {
 
@@ -173,11 +179,73 @@ private fun <D : CallableDescriptor> CallableDescriptorCollector<D>.filtered(fil
         }
 
         override fun getExtensionsByName(scope: JetScope, name: Name, bindingTrace: BindingTrace): Collection<D> {
-            return delegate.getExtensionsByName(scope, name, bindingTrace).filter(filter)
+            val result = delegate.getExtensionsByName(scope, name, bindingTrace).toArrayList()
+
+            if (name == OperatorConventions.INVOKE &&
+                result.none { // TODO: very dirty hack to avoid multiple equivalent synthesized invokes to be added
+                    it.getName() == OperatorConventions.INVOKE &&
+                    (it as? CallableMemberDescriptor)?.getKind() != CallableMemberDescriptor.Kind.DECLARATION
+                }
+            ) {
+                for (invoke in delegate.getNonExtensionsByName(scope, name, bindingTrace).filterIsInstance<FunctionInvokeDescriptor>()) {
+                    if (invoke.getValueParameters().isEmpty()) continue
+
+                    val synthesized = if ((invoke.getContainingDeclaration() as? FunctionClassDescriptor)?.functionKind == FunctionClassDescriptor.Kind.Function) {
+                        val unsubstituted = createSynthesizedFunctionWithFirstParameterAsReceiver(invoke)
+                        unsubstituted.substitute(TypeSubstitutor.create(invoke.getDispatchReceiverParameter()!!.getType()))
+                    }
+                    else {
+                        val invokeDeclaration = invoke.getOverriddenDescriptors().single()
+                        val unsubstituted = createSynthesizedFunctionWithFirstParameterAsReceiver(invokeDeclaration)
+                        val fakeOverride = unsubstituted.copy(
+                                invoke.getContainingDeclaration(),
+                                unsubstituted.getModality(),
+                                unsubstituted.getVisibility(),
+                                CallableMemberDescriptor.Kind.FAKE_OVERRIDE,
+                                true
+                        )
+                        fakeOverride.addOverriddenDescriptor(unsubstituted)
+                        fakeOverride.substitute(TypeSubstitutor.create(invoke.getDispatchReceiverParameter()!!.getType()))
+                    }
+
+                    @suppress("UNCHECKED_CAST")
+                    result.add(synthesized as D)
+                }
+            }
+
+            return result.filter(filter)
         }
 
         override fun toString(): String {
             return delegate.toString()
         }
     }
+}
+
+private fun createSynthesizedFunctionWithFirstParameterAsReceiver(descriptor: FunctionDescriptor): FunctionDescriptor {
+    val result = SimpleFunctionDescriptorImpl.create(
+            descriptor.getContainingDeclaration(),
+            descriptor.getAnnotations(),
+            descriptor.getName(),
+            CallableMemberDescriptor.Kind.SYNTHESIZED,
+            descriptor.getSource()
+    )
+
+    val original = descriptor.getOriginal()
+    result.initialize(
+            original.getValueParameters().first().getType(),
+            original.getDispatchReceiverParameter(),
+            original.getTypeParameters(),
+            original.getValueParameters().drop(1).map { p ->
+                ValueParameterDescriptorImpl(
+                        result, null, p.getIndex() - 1, p.getAnnotations(), Name.identifier("p${p.getIndex() + 1}"), p.getType(),
+                        p.declaresDefaultValue(), p.getVarargElementType(), p.getSource()
+                )
+            },
+            original.getReturnType(),
+            original.getModality(),
+            original.getVisibility()
+    )
+
+    return result
 }

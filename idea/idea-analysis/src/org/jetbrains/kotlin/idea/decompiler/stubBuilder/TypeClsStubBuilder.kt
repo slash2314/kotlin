@@ -40,44 +40,42 @@ import java.util.ArrayList
 
 class TypeClsStubBuilder(private val c: ClsStubBuilderContext) {
 
-    fun createTypeReferenceStub(parent: StubElement<out PsiElement>, typeProto: Type) {
+    fun createTypeReferenceStub(parent: StubElement<out PsiElement>, type: Type) {
         val typeReference = KotlinPlaceHolderStubImpl<JetTypeReference>(parent, JetStubElementTypes.TYPE_REFERENCE)
 
-        val typeAnnotations = c.components.annotationLoader.loadTypeAnnotations(typeProto, c.nameResolver)
-        if (typeAnnotations.isNotEmpty()) {
-            createAnnotationStubs(typeAnnotations, typeReference, needWrappingAnnotationEntries = true)
-        }
+        val annotations = c.components.annotationLoader.loadTypeAnnotations(type, c.nameResolver)
 
-        createTypeStub(typeReference, typeProto)
-    }
+        val effectiveParent =
+                if (type.getNullable()) KotlinPlaceHolderStubImpl<JetNullableType>(typeReference, JetStubElementTypes.NULLABLE_TYPE)
+                else typeReference
 
-    private fun createTypeStub(parent: StubElement<out PsiElement>, type: Type) {
-        val isNullable = type.getNullable()
-        val effectiveParent = if (isNullable) KotlinPlaceHolderStubImpl<JetNullableType>(parent, JetStubElementTypes.NULLABLE_TYPE) else parent
         when (type.getConstructor().getKind()) {
             Type.Constructor.Kind.CLASS -> {
-                createClassReferenceTypeStub(effectiveParent, type)
+                createClassReferenceTypeStub(effectiveParent, type, annotations)
             }
             Type.Constructor.Kind.TYPE_PARAMETER -> {
+                createTypeAnnotationStubs(effectiveParent, annotations)
                 val typeParameterName = c.typeParameters[type.getConstructor().getId()]
                 createStubForTypeName(ClassId.topLevel(FqName.topLevel(typeParameterName)), effectiveParent)
             }
         }
     }
 
-    private fun createClassReferenceTypeStub(parent: StubElement<out PsiElement>, type: Type) {
+    private fun createClassReferenceTypeStub(parent: KotlinStubBaseImpl<*>, type: Type, annotations: List<ClassId>) {
         val classId = c.nameResolver.getClassId(type.getConstructor().getId())
-        val fqName = classId.asSingleFqName().toUnsafe()
-        val isFunctionType = KotlinBuiltIns.isExactFunctionType(fqName)
-        val isExtensionFunctionType = KotlinBuiltIns.isExactExtensionFunctionType(fqName)
-        if (isFunctionType || isExtensionFunctionType) {
-            createFunctionTypeStub(parent, type, isExtensionFunctionType)
+        if (KotlinBuiltIns.isNumberedFunctionClassFqName(classId.asSingleFqName().toUnsafe())) {
+            val extension = annotations.any { annotation -> annotation.asSingleFqName() == KotlinBuiltIns.FQ_NAMES.extension }
+            createFunctionTypeStub(parent, type, extension)
             return
         }
+        createTypeAnnotationStubs(parent, annotations)
         val typeStub = createStubForTypeName(classId, parent)
         val typeArgumentProtoList = type.getArgumentList()
         createTypeArgumentListStub(typeStub, typeArgumentProtoList)
-        return
+    }
+
+    private fun createTypeAnnotationStubs(parent: KotlinStubBaseImpl<*>, annotations: List<ClassId>) {
+        createAnnotationStubs(annotations, parent, needWrappingAnnotationEntries = true)
     }
 
     private fun createTypeArgumentListStub(typeStub: KotlinUserTypeStub, typeArgumentProtoList: List<Type.Argument>) {
@@ -115,7 +113,7 @@ class TypeClsStubBuilder(private val c: ClsStubBuilderContext) {
 
         val parameterList = KotlinPlaceHolderStubImpl<JetParameterList>(functionType, JetStubElementTypes.VALUE_PARAMETER_LIST)
         val typeArgumentsWithoutReceiverAndReturnType
-                = typeArgumentList.subList(if (isExtensionFunctionType) 1 else 0, typeArgumentList.size - 1)
+                = typeArgumentList.subList(if (isExtensionFunctionType) 1 else 0, typeArgumentList.size() - 1)
         typeArgumentsWithoutReceiverAndReturnType.forEach { argument ->
             val parameter = KotlinParameterStubImpl(parameterList, fqName = null, name = null, isMutable = false, hasValOrVarNode = false, hasDefaultValue = false)
             createTypeReferenceStub(parameter, argument.getType())
