@@ -34,4 +34,7 @@ public interface VirtualFileFinder extends KotlinClassFinder {
 
     @Nullable
     VirtualFile findVirtualFileWithHeader(@NotNull ClassId className);
+
+    @Nullable
+    VirtualFile findVirtualFileWithKotlinJsMetadata(@NotNull ClassId className);
 }

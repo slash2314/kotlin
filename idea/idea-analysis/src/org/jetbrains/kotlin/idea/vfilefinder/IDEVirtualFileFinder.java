@@ -20,11 +20,13 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.util.indexing.FileBasedIndex;
+import com.intellij.util.indexing.ID;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinder;
 import org.jetbrains.kotlin.load.kotlin.VirtualFileKotlinClassFinder;
 import org.jetbrains.kotlin.name.ClassId;
+import org.jetbrains.kotlin.name.FqName;
 
 import java.util.Collection;
 
@@ -43,9 +45,8 @@ public final class IDEVirtualFileFinder extends VirtualFileKotlinClassFinder imp
     }
 
     @Nullable
-    @Override
-    public VirtualFile findVirtualFileWithHeader(@NotNull ClassId classId) {
-        Collection<VirtualFile> files = FileBasedIndex.getInstance().getContainingFiles(KotlinClassFileIndex.KEY, classId.asSingleFqName(), scope);
+    private VirtualFile findVirtualFileWithHeader(@NotNull ClassId classId, ID<FqName, Void> key) {
+        Collection<VirtualFile> files = FileBasedIndex.getInstance().getContainingFiles(key, classId.asSingleFqName(), scope);
         if (files.isEmpty()) {
             return null;
         }
@@ -53,5 +54,17 @@ public final class IDEVirtualFileFinder extends VirtualFileKotlinClassFinder imp
             LOG.warn("There are " + files.size() + " classes with same fqName: " + classId + " found.");
         }
         return files.iterator().next();
+    }
+
+    @Nullable
+    @Override
+    public VirtualFile findVirtualFileWithHeader(@NotNull ClassId classId) {
+        return findVirtualFileWithHeader(classId, KotlinClassFileIndex.KEY);
+    }
+
+    @Nullable
+    @Override
+    public VirtualFile findVirtualFileWithKotlinJsMetadata(@NotNull ClassId classId) {
+        return findVirtualFileWithHeader(classId, KotlinJavaScriptMetaFileIndex.KEY);
     }
 }

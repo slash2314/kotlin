@@ -31,4 +31,6 @@ public class CliVirtualFileFinder(private val index: JvmDependenciesIndex) : Vir
             }
         }
     }
+
+    override fun findVirtualFileWithKotlinJsMetadata(classId: ClassId): VirtualFile? = null
 }
