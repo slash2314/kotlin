@@ -22,85 +22,67 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.indexing.*
 import com.intellij.util.io.KeyDescriptor
 import org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache
-import org.jetbrains.kotlin.load.kotlin.KotlinJvmBinaryClass
 import org.jetbrains.kotlin.name.FqName
-
 import java.io.DataInput
 import java.io.DataOutput
-import java.io.IOException
 import java.util.Collections
 
-public class KotlinClassFileIndex : ScalarIndexExtension<FqName>() {
+val KEY_DESCRIPTOR = object : KeyDescriptor<FqName> {
+    override fun save(output: DataOutput, value: FqName) = output.writeUTF(value.asString())
 
-    override fun getName(): ID<FqName, Void> {
-        return KEY
-    }
+    override fun read(input: DataInput) = FqName(input.readUTF())
 
-    override fun getIndexer(): DataIndexer<FqName, Void, FileContent> {
-        return INDEXER
-    }
+    override fun getHashCode(value: FqName) = value.asString().hashCode()
 
-    override fun getKeyDescriptor(): KeyDescriptor<FqName> {
-        return KEY_DESCRIPTOR
-    }
+    override fun isEqual(val1: FqName?, val2: FqName?) = val1 == val2
+}
 
-    override fun getInputFilter(): FileBasedIndex.InputFilter {
-        return INPUT_FILTER
-    }
-
-    override fun dependsOnFileContent(): Boolean {
-        return true
-    }
-
-    override fun getVersion(): Int {
-        return VERSION
-    }
-
-    companion object {
-
-        private val LOG = Logger.getInstance(javaClass<KotlinClassFileIndex>())
-        private val VERSION = 2
-        public val KEY: ID<FqName, Void> = ID.create<FqName, Void>(javaClass<KotlinClassFileIndex>().getCanonicalName())
-
-        private val KEY_DESCRIPTOR = object : KeyDescriptor<FqName> {
-            throws(IOException::class)
-            override fun save(out: DataOutput, value: FqName) {
-                out.writeUTF(value.asString())
+fun indexer(log: Logger, f: (VirtualFile) -> FqName?): DataIndexer<FqName, Void, FileContent> {
+    return DataIndexer {
+        try {
+            val fqName = f(it.getFile())
+            if (fqName != null) {
+                Collections.singletonMap<FqName, Void>(fqName, null)
             }
-
-            throws(IOException::class)
-            override fun read(`in`: DataInput): FqName {
-                return FqName(`in`.readUTF())
-            }
-
-            override fun getHashCode(value: FqName): Int {
-                return value.asString().hashCode()
-            }
-
-            override fun isEqual(val1: FqName?, val2: FqName?): Boolean {
-                return if (val1 == null) val2 == null else val1 == val2
+            else {
+                emptyMap()
             }
         }
-
-        private val INPUT_FILTER = object : FileBasedIndex.InputFilter {
-            override fun acceptInput(file: VirtualFile): Boolean {
-                return file.getFileType() == JavaClassFileType.INSTANCE
-            }
-        }
-        public val INDEXER: DataIndexer<FqName, Void, FileContent> = object : DataIndexer<FqName, Void, FileContent> {
-            override fun map(inputData: FileContent): Map<FqName, Void> {
-                try {
-                    val kotlinClass = KotlinBinaryClassCache.getKotlinBinaryClass(inputData.getFile())
-                    if (kotlinClass != null && kotlinClass.getClassHeader().isCompatibleAbiVersion) {
-                        return Collections.singletonMap<FqName, Void>(kotlinClass.getClassId().asSingleFqName(), null)
-                    }
-                }
-                catch (e: Throwable) {
-                    LOG.warn("Error while indexing file " + inputData.getFileName(), e)
-                }
-
-                return emptyMap()
-            }
+        catch (e: Throwable) {
+            log.warn("Error while indexing file " + it.getFileName(), e)
+            emptyMap()
         }
     }
 }
+
+public class KotlinClassFileIndex : ScalarIndexExtension<FqName>() {
+    override fun getName() = KEY
+
+    override fun getIndexer() = INDEXER
+
+    override fun getKeyDescriptor() = KEY_DESCRIPTOR
+
+    override fun getInputFilter() = INPUT_FILTER
+
+    override fun dependsOnFileContent() = true
+
+    override fun getVersion() = VERSION
+
+    companion object {
+        public val KEY: ID<FqName, Void> = ID.create(javaClass<KotlinClassFileIndex>().getCanonicalName())
+
+        private val LOG = Logger.getInstance(javaClass<KotlinClassFileIndex>())
+
+        private val VERSION = 2
+
+        private val INPUT_FILTER = FileBasedIndex.InputFilter { file -> file.getFileType() == JavaClassFileType.INSTANCE }
+
+        private val INDEXER = indexer(LOG) {
+            file ->
+            val kotlinClass = KotlinBinaryClassCache.getKotlinBinaryClass(file)
+            if (kotlinClass != null && kotlinClass.getClassHeader().isCompatibleAbiVersion) kotlinClass.getClassId().asSingleFqName() else null
+        }
+    }
+}
+
+
