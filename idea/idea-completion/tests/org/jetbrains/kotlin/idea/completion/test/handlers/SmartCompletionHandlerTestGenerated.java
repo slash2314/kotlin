@@ -89,6 +89,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("AnonymousObjectUnresolvedTypeArg.kt")
+    public void testAnonymousObjectUnresolvedTypeArg() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/AnonymousObjectUnresolvedTypeArg.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("AutoCompleteAfterAs1.kt")
     public void testAutoCompleteAfterAs1() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/AutoCompleteAfterAs1.kt");
