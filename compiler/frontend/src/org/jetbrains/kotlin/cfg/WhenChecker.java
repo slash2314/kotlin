@@ -19,10 +19,9 @@ package org.jetbrains.kotlin.cfg;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.descriptors.ClassDescriptor;
-import org.jetbrains.kotlin.descriptors.ClassKind;
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor;
+import org.jetbrains.kotlin.descriptors.*;
 import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.psiUtil.PsiUtilPackage;
 import org.jetbrains.kotlin.resolve.BindingContext;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 import org.jetbrains.kotlin.resolve.CompileTimeConstantUtils;
@@ -51,11 +50,17 @@ public final class WhenChecker {
     }
 
     @Nullable
-    private static ClassDescriptor getClassDescriptorOfTypeIfEnum(@Nullable JetType type) {
+    private static ClassDescriptor getClassDescriptor(@Nullable JetType type) {
         if (type == null) return null;
         DeclarationDescriptor declarationDescriptor = type.getConstructor().getDeclarationDescriptor();
         if (!(declarationDescriptor instanceof ClassDescriptor)) return null;
-        ClassDescriptor classDescriptor = (ClassDescriptor) declarationDescriptor;
+        return (ClassDescriptor) declarationDescriptor;
+    }
+
+    @Nullable
+    private static ClassDescriptor getClassDescriptorOfTypeIfEnum(@Nullable JetType type) {
+        ClassDescriptor classDescriptor = getClassDescriptor(type);
+        if (classDescriptor == null) return null;
         if (classDescriptor.getKind() != ClassKind.ENUM_CLASS || classDescriptor.getModality().isOverridable()) return null;
 
         return classDescriptor;
@@ -98,23 +103,49 @@ public final class WhenChecker {
         return notEmpty;
     }
 
+    private static boolean isWhenOnSealedClassExhaustive(
+            @NotNull JetWhenExpression expression, @NotNull BindingTrace trace, @NotNull ClassDescriptor enumClassDescriptor) {
+        // TODO: sealed classes, related problems: KT-6299, KT-7606
+        // All possible subclasses must be defined inside base class
+        // Inner classes / objects are OK, but what should we do with local classes used e.g. in properties / local variables?
+        return false;
+    }
+
+    private static boolean isSealed(@NotNull ClassDescriptor descriptor, @NotNull JetClass klass) {
+        // Class is assumed as sealed if and only if all its constructors are private AND the class itself is abstract
+        for (ConstructorDescriptor constructorDescriptor: descriptor.getConstructors()) {
+            if (constructorDescriptor.getVisibility() != Visibilities.PRIVATE) {
+                return false;
+            }
+        }
+        return PsiUtilPackage.isAbstract(klass);
+    }
+
     public static boolean isWhenExhaustive(@NotNull JetWhenExpression expression, @NotNull BindingTrace trace) {
         JetType type = whenSubjectType(expression, trace.getBindingContext());
         if (type == null) return false;
-        ClassDescriptor classDescriptor = getClassDescriptorOfTypeIfEnum(type);
+        ClassDescriptor classDescriptor = getClassDescriptor(type);
 
         boolean exhaustive;
-        if (classDescriptor == null) {
-            if (KotlinBuiltIns.isBoolean(TypeUtils.makeNotNullable(type))) {
+        if (classDescriptor != null) {
+            if (classDescriptor.getKind() == ClassKind.ENUM_CLASS && !classDescriptor.getModality().isOverridable()) {
+                // Enum
+                exhaustive = isWhenOnEnumExhaustive(expression, trace, classDescriptor);
+            }
+            else if (KotlinBuiltIns.isBoolean(TypeUtils.makeNotNullable(type))) {
+                // Boolean
                 exhaustive = isWhenOnBooleanExhaustive(expression, trace);
             }
+            else if (type instanceof JetClass && isSealed(classDescriptor, (JetClass) type)) {
+                exhaustive = isWhenOnSealedClassExhaustive(expression, trace, classDescriptor);
+            }
             else {
-                // TODO: sealed hierarchies, etc.
                 exhaustive = false;
+
             }
         }
         else {
-            exhaustive = isWhenOnEnumExhaustive(expression, trace, classDescriptor);
+            exhaustive = false;
         }
         if (exhaustive && (!TypeUtils.isNullableType(type) || containsNullCase(expression, trace))) {
             trace.record(BindingContext.EXHAUSTIVE_WHEN, expression);
