@@ -3150,6 +3150,18 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("semicolonDelimiter.kt")
+            public void testSemicolonDelimiter() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumDelimiter/semicolonDelimiter.kt");
+                doTest(fileName);
+            }
+
+            @TestMetadata("semicolonDelimiterExceptLast.kt")
+            public void testSemicolonDelimiterExceptLast() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumDelimiter/semicolonDelimiterExceptLast.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("wholeProject.kt")
             public void testWholeProject() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumDelimiter/wholeProject.kt");

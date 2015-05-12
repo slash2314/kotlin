@@ -4260,6 +4260,12 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("enumSemicolonBetween.kt")
+            public void testEnumSemicolonBetween() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/enum/enumSemicolonBetween.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("enumStarImport.kt")
             public void testEnumStarImport() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/enum/enumStarImport.kt");
