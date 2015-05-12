@@ -33,9 +33,6 @@ public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths(
     private val CLASSES_FILE_EXTENSION = "kotlin_classes"
     private val STRING_TABLE_FILE_EXTENSION = "kotlin_string_table"
 
-    private val PACKAGE_CLASS_NAME_SUFFIX: String = "Package"
-    private val DEFAULT_PACKAGE_CLASS_NAME: String = "_Default" + PACKAGE_CLASS_NAME_SUFFIX
-
     public fun getClassesInPackageFilePath(fqName: FqName): String =
             fqName.toPath().withSepIfNotEmpty() + shortName(fqName) + "." + CLASSES_FILE_EXTENSION
 
@@ -51,20 +48,6 @@ public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths(
     public override fun getStringTableFilePath(fqName: FqName): String =
             fqName.toPath().withSepIfNotEmpty() + shortName(fqName) + "." + STRING_TABLE_FILE_EXTENSION
 
-    public fun isPackageMetadataFile(fileName: String): Boolean =
-            KotlinJavascriptSerializedResourcePaths.getPackageFilePath(getPackageFqName(fileName)) == fileName
-
-    public fun isStringTableFile(fileName: String): Boolean =
-            KotlinJavascriptSerializedResourcePaths.getStringTableFilePath(getPackageFqName(fileName)) == fileName
-
-    public fun isClassesInPackageFile(fileName: String): Boolean =
-            KotlinJavascriptSerializedResourcePaths.getClassesInPackageFilePath(getPackageFqName(fileName)) == fileName
-
-    private fun getPackageFqName(fileName: String): FqName = FqName(getPackageName(fileName))
-
-    private fun getPackageName(filePath: String): String =
-            if (filePath.indexOf('/') >= 0) filePath.substringBeforeLast('/').replace('/', '.') else ""
-
     private fun FqName.toPath() = this.asString().replace('.', '/')
 
     private fun String.withSepIfNotEmpty() = if (this.isEmpty()) this else this + "/"
@@ -72,15 +55,39 @@ public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths(
     private fun shortName(fqName: FqName): String =
             if (fqName.isRoot()) "default-package" else fqName.shortName().asString()
 
-    private fun getPackageClassFqName(packageFQN: FqName): FqName {
-        return packageFQN.child(Name.identifier(getPackageClassName(packageFQN)))
-    }
-
-    private fun getPackageClassName(packageFQN: FqName): String {
-        return if (packageFQN.isRoot()) DEFAULT_PACKAGE_CLASS_NAME else capitalizeNonEmptyString(packageFQN.shortName().asString()) + PACKAGE_CLASS_NAME_SUFFIX
-    }
-
-    private fun capitalizeNonEmptyString(s: String): String {
-        return if (Character.isUpperCase(s.charAt(0))) s else Character.toUpperCase(s.charAt(0)) + s.substring(1)
-    }
 }
+
+public fun FqName.isPackageClassFqName(): Boolean = !this.isRoot() && getPackageClassFqName(this.parent()) == this
+
+public fun isDefaultPackageMetafile(fileName: String): Boolean = fileName == DEFAULT_PACKAGE_METAFILE_NAME
+
+public fun isPackageMetadataFile(fileName: String): Boolean =
+        KotlinJavascriptSerializedResourcePaths.getPackageFilePath(getPackageFqName(fileName)) == fileName
+
+public fun isStringTableFile(fileName: String): Boolean =
+        KotlinJavascriptSerializedResourcePaths.getStringTableFilePath(getPackageFqName(fileName)) == fileName
+
+public fun isClassesInPackageFile(fileName: String): Boolean =
+        KotlinJavascriptSerializedResourcePaths.getClassesInPackageFilePath(getPackageFqName(fileName)) == fileName
+
+private val PACKAGE_CLASS_NAME_SUFFIX: String = "Package"
+private val DEFAULT_PACKAGE_CLASS_NAME: String = "_Default" + PACKAGE_CLASS_NAME_SUFFIX
+private val DEFAULT_PACKAGE_METAFILE_NAME: String = DEFAULT_PACKAGE_CLASS_NAME + "." + KotlinJavascriptSerializationUtil.CLASS_METADATA_FILE_EXTENSION
+
+private fun getPackageFqName(fileName: String): FqName = FqName(getPackageName(fileName))
+
+private fun getPackageName(filePath: String): String =
+        if (filePath.indexOf('/') >= 0) filePath.substringBeforeLast('/').replace('/', '.') else ""
+
+private fun getPackageClassFqName(packageFQN: FqName): FqName {
+    return packageFQN.child(Name.identifier(getPackageClassName(packageFQN)))
+}
+
+private fun getPackageClassName(packageFQN: FqName): String {
+    return if (packageFQN.isRoot()) DEFAULT_PACKAGE_CLASS_NAME else capitalizeNonEmptyString(packageFQN.shortName().asString()) + PACKAGE_CLASS_NAME_SUFFIX
+}
+
+private fun capitalizeNonEmptyString(s: String): String {
+    return if (Character.isUpperCase(s.charAt(0))) s else Character.toUpperCase(s.charAt(0)) + s.substring(1)
+}
+
