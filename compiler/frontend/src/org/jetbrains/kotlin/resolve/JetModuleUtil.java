@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.resolve;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor;
+import org.jetbrains.kotlin.descriptors.impl.PackageViewDescriptorImpl;
 import org.jetbrains.kotlin.descriptors.impl.SubpackagesScope;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.resolve.scopes.JetScope;
@@ -36,6 +37,6 @@ public class JetModuleUtil {
         PackageViewDescriptor rootPackage = module.getPackage(FqName.ROOT);
         assert rootPackage != null : "Couldn't find root package for " + module;
 
-        return scopeIncludingMembers ? rootPackage.getMemberScope() : new SubpackagesScope(rootPackage);
+        return scopeIncludingMembers ? rootPackage.getMemberScope() : new SubpackagesScope((PackageViewDescriptorImpl) rootPackage);
     }
 }
