@@ -48,7 +48,7 @@ public abstract class AbstractAddImportTest : AbstractImportsTest() {
         val moduleDescriptor = file.getResolutionFacade().findModuleDescriptor(file)
         val scope = JetModuleUtil.getSubpackagesOfRootScope(moduleDescriptor)
         val descriptors = InjectorForTests(getProject(), moduleDescriptor).getQualifiedExpressionResolver()
-                .processImportReference(importDirective, scope, scope, BindingTraceContext(), LookupMode.EVERYTHING)
+                .processImportReference(importDirective, scope, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING)
                 .getAllDescriptors()
                 .filter(filter)
 

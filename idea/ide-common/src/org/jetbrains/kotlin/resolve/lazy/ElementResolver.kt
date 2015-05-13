@@ -430,11 +430,11 @@ public abstract class ElementResolver protected(
                     val scope = filePackage.getMemberScope()
                     val descriptors = if (element is JetDotQualifiedExpression) {
                         qualifiedExpressionResolver.lookupDescriptorsForQualifiedExpression(
-                                element, rootPackage.getMemberScope(), scope, trace, QualifiedExpressionResolver.LookupMode.EVERYTHING, false)
+                                element, rootPackage.getMemberScope(), filePackage, trace, QualifiedExpressionResolver.LookupMode.EVERYTHING, false)
                     }
                     else {
                         qualifiedExpressionResolver.lookupDescriptorsForSimpleNameReference(
-                                element as JetSimpleNameExpression, rootPackage.getMemberScope(), scope, trace, QualifiedExpressionResolver.LookupMode.EVERYTHING, false, false)
+                                element as JetSimpleNameExpression, rootPackage.getMemberScope(), filePackage, trace, QualifiedExpressionResolver.LookupMode.EVERYTHING, false, false)
                     }
 
                     return descriptors.firstIsInstanceOrNull<PackageViewDescriptor>()?.getMemberScope()

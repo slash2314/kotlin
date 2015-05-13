@@ -204,6 +204,6 @@ public class KotlinIndicesHelper(
         val scope = JetModuleUtil.getSubpackagesOfRootScope(moduleDescriptor)
         val qualifiedExpressionResolver = QualifiedExpressionResolver()
         qualifiedExpressionResolver.setSymbolUsageValidator(SymbolUsageValidator.Empty)
-        return qualifiedExpressionResolver.processImportReference(importDirective, scope, scope, BindingTraceContext(), LookupMode.EVERYTHING).getAllDescriptors()
+        return qualifiedExpressionResolver.processImportReference(importDirective, scope, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING).getAllDescriptors()
     }
 }
