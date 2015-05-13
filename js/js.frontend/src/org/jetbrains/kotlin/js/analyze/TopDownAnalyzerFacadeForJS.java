@@ -32,6 +32,8 @@ import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import org.jetbrains.kotlin.psi.JetFile;
 import org.jetbrains.kotlin.resolve.*;
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory;
+import org.jetbrains.kotlin.storage.LockBasedStorageManager;
+import org.jetbrains.kotlin.storage.StorageManager;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -105,6 +107,6 @@ public final class TopDownAnalyzerFacadeForJS {
 
     @NotNull
     public static ModuleDescriptorImpl createJsModule(@NotNull String name) {
-        return new ModuleDescriptorImpl(Name.special(name), DEFAULT_IMPORTS, PlatformToKotlinClassMap.EMPTY);
+        return new ModuleDescriptorImpl(Name.special(name), DEFAULT_IMPORTS, PlatformToKotlinClassMap.EMPTY, LockBasedStorageManager.NO_LOCKS);
     }
 }

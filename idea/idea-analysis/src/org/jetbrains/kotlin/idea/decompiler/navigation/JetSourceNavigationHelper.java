@@ -64,6 +64,7 @@ import org.jetbrains.kotlin.resolve.jvm.TopDownAnalyzerFacadeForJVM;
 import org.jetbrains.kotlin.resolve.lazy.KotlinCodeAnalyzer;
 import org.jetbrains.kotlin.resolve.lazy.ResolveSession;
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory;
+import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.kotlin.types.DynamicTypesSettings;
 
 import java.util.Collection;
@@ -241,7 +242,8 @@ public class JetSourceNavigationHelper {
 
         ModuleDescriptorImpl moduleDescriptor = new ModuleDescriptorImpl(Name.special("<library module>"),
                                                                          TopDownAnalyzerFacadeForJVM.DEFAULT_IMPORTS,
-                                                                         PlatformToKotlinClassMap.EMPTY);
+                                                                         PlatformToKotlinClassMap.EMPTY,
+                                                                         LockBasedStorageManager.NO_LOCKS);
 
         moduleDescriptor.addDependencyOnModule(moduleDescriptor);
         moduleDescriptor.addDependencyOnModule(KotlinBuiltIns.getInstance().getBuiltInsModule());

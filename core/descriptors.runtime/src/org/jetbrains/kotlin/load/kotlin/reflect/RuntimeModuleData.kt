@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.di.InjectorForRuntimeDescriptorLoader
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.JavaToKotlinClassMap
 import org.jetbrains.kotlin.serialization.deserialization.LocalClassResolver
+import org.jetbrains.kotlin.storage.LockBasedStorageManager
 
 public class RuntimeModuleData private(private val injector: InjectorForRuntimeDescriptorLoader) {
     public val module: ModuleDescriptor get() = injector.getModuleDescriptor()
@@ -31,7 +32,7 @@ public class RuntimeModuleData private(private val injector: InjectorForRuntimeD
 
     companion object {
         public fun create(classLoader: ClassLoader): RuntimeModuleData {
-            val module = ModuleDescriptorImpl(Name.special("<runtime module for $classLoader>"), listOf(), JavaToKotlinClassMap.INSTANCE)
+            val module = ModuleDescriptorImpl(Name.special("<runtime module for $classLoader>"), listOf(), JavaToKotlinClassMap.INSTANCE, LockBasedStorageManager.NO_LOCKS)
             module.addDependencyOnModule(module)
             module.addDependencyOnModule(KotlinBuiltIns.getInstance().getBuiltInsModule())
             val injector = InjectorForRuntimeDescriptorLoader(classLoader, module)

@@ -21,17 +21,24 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.scopes.ChainedScope
 import org.jetbrains.kotlin.resolve.scopes.JetScope
+import org.jetbrains.kotlin.storage.StorageManager
+import org.jetbrains.kotlin.storage.get
 import org.jetbrains.kotlin.types.TypeSubstitutor
 
 public class PackageViewDescriptorImpl(
-        private val module: ModuleDescriptor,
+        private val module: ModuleDescriptorImpl,
         private val fqName: FqName,
-        private val fragments: List<PackageFragmentDescriptor>
+        storageManager: StorageManager
 ) : DeclarationDescriptorImpl(Annotations.EMPTY, fqName.shortNameOrSpecial()), PackageViewDescriptor {
-    private val memberScope: JetScope = run {
-        assert(fragments.isNotEmpty()) { "$fqName in module" }
 
-        val scopes = fragments.map { it.getMemberScope() } + SubpackagesScope(this)
+    private val fragments = storageManager.createLazyValue {
+        module.packageFragmentProvider.getPackageFragments(fqName)
+    }
+
+    private val memberScope = storageManager.createLazyValue {
+        assert(fragments().isNotEmpty()) { "$fqName in module" }
+
+        val scopes = fragments().map { it.getMemberScope() } + SubpackagesScope(this)
         ChainedScope(this, "package view scope for $fqName in ${module.getName()}", *scopes.toTypedArray())
     }
 
@@ -43,11 +50,11 @@ public class PackageViewDescriptorImpl(
 
     override fun getFqName(): FqName = fqName
 
-    override fun getMemberScope(): JetScope = memberScope
+    override fun getMemberScope(): JetScope = memberScope()
 
     override fun getModule(): ModuleDescriptor = module
 
-    override fun getFragments() = fragments
+    override fun getFragments() = fragments()
 
     override fun equals(other: Any?): Boolean {
         if (javaClass != other?.javaClass) return false

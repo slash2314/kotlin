@@ -129,7 +129,7 @@ public trait AnalyzerFacade<A : ResolverForModule, in P : PlatformAnalysisParame
             val descriptorByModule = HashMap<M, ModuleDescriptorImpl>()
             modules.forEach {
                 module ->
-                descriptorByModule[module] = ModuleDescriptorImpl(module.name, defaultImports, platformToKotlinClassMap)
+                descriptorByModule[module] = ModuleDescriptorImpl(module.name, defaultImports, platformToKotlinClassMap, globalContext.storageManager)
             }
             return ResolverForProjectImpl(descriptorByModule, delegateResolver)
         }

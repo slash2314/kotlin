@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import org.jetbrains.kotlin.resolve.ImportPath;
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter;
 import org.jetbrains.kotlin.resolve.scopes.JetScope;
+import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.kotlin.types.error.ErrorSimpleFunctionDescriptorImpl;
 import org.jetbrains.kotlin.utils.Printer;
 
@@ -45,7 +46,8 @@ public class ErrorUtils {
         ERROR_MODULE = new ModuleDescriptorImpl(
                 Name.special("<ERROR MODULE>"),
                 Collections.<ImportPath>emptyList(),
-                PlatformToKotlinClassMap.EMPTY
+                PlatformToKotlinClassMap.EMPTY,
+                LockBasedStorageManager.NO_LOCKS
         );
     }
 
