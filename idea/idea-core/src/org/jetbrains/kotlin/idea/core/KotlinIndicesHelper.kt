@@ -28,7 +28,10 @@ import org.jetbrains.kotlin.idea.util.getImplicitReceiversWithInstance
 import org.jetbrains.kotlin.idea.util.substituteExtensionIfCallable
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.resolve.*
+import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.BindingTraceContext
+import org.jetbrains.kotlin.resolve.ImportPath
+import org.jetbrains.kotlin.resolve.QualifiedExpressionResolver
 import org.jetbrains.kotlin.resolve.QualifiedExpressionResolver.LookupMode
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getDataFlowInfo
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo
@@ -201,9 +204,8 @@ public class KotlinIndicesHelper(
 
     private fun analyzeImportReference(fqName: FqName): Collection<DeclarationDescriptor> {
         val importDirective = JetPsiFactory(project).createImportDirective(ImportPath(fqName, false))
-        val scope = JetModuleUtil.getSubpackagesOfRootScope(moduleDescriptor)
         val qualifiedExpressionResolver = QualifiedExpressionResolver()
         qualifiedExpressionResolver.setSymbolUsageValidator(SymbolUsageValidator.Empty)
-        return qualifiedExpressionResolver.processImportReference(importDirective, scope, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING).getAllDescriptors()
+        return qualifiedExpressionResolver.processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING, false).getAllDescriptors()
     }
 }

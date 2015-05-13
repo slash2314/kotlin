@@ -34,8 +34,6 @@ import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.BindingTraceContext
-import org.jetbrains.kotlin.resolve.JetModuleUtil
-import org.jetbrains.kotlin.resolve.QualifiedExpressionResolver
 import org.jetbrains.kotlin.resolve.QualifiedExpressionResolver.LookupMode
 import org.jetbrains.kotlin.test.InTextDirectivesUtils
 import org.jetbrains.kotlin.test.JetTestUtils
@@ -57,9 +55,8 @@ public abstract class AbstractCodeFragmentHighlightingTest : AbstractJetPsiCheck
             InTextDirectivesUtils.findListWithPrefixes(fileText, "// IMPORT: ").forEach {
                 val importDirective = JetPsiFactory(getProject()).createImportDirective(it)
                 val moduleDescriptor = file.getResolutionFacade().findModuleDescriptor(file)
-                val scope = JetModuleUtil.getSubpackagesOfRootScope(moduleDescriptor)
                 val descriptor = InjectorForTests(getProject(), moduleDescriptor).getQualifiedExpressionResolver()
-                                         .processImportReference(importDirective, scope, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING)
+                                         .processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING, false)
                                          .getAllDescriptors()
                                          .singleOrNull() ?: error("Could not resolve descriptor to import: $it")
                 ImportInsertHelper.getInstance(getProject()).importDescriptor(file, descriptor)

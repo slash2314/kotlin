@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.JetImportDirective
 import org.jetbrains.kotlin.psi.JetPsiUtil
 import org.jetbrains.kotlin.resolve.BindingTrace
-import org.jetbrains.kotlin.resolve.JetModuleUtil
 import org.jetbrains.kotlin.resolve.PlatformTypesMappedToKotlinChecker
 import org.jetbrains.kotlin.resolve.QualifiedExpressionResolver.LookupMode
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
@@ -70,12 +69,11 @@ class LazyImportResolver(
         val moduleDescriptor: ModuleDescriptor,
         val indexedImports: IndexedImports,
         private val traceForImportResolve: BindingTrace,
-        includeRootPackageClasses: Boolean
+        private val includeRootPackageClasses: Boolean
 ) {
     private val importedScopesProvider = resolveSession.getStorageManager().createMemoizedFunction {
         directive: JetImportDirective -> ImportDirectiveResolveCache(directive)
     }
-    private val rootScope = JetModuleUtil.getImportsResolutionScope(resolveSession.getModuleDescriptor(), includeRootPackageClasses)
 
     private var directiveUnderResolve: JetImportDirective? = null
 
@@ -102,7 +100,7 @@ class LazyImportResolver(
                     try {
                         val resolver = resolveSession.getQualifiedExpressionResolver()
                         val directiveImportScope = resolver.processImportReference(
-                                directive, rootScope, moduleDescriptor, traceForImportResolve, mode)
+                                directive, moduleDescriptor, traceForImportResolve, mode, includeRootPackageClasses)
                         val descriptors = if (directive.isAllUnder()) emptyList() else directiveImportScope.getAllDescriptors()
 
                         if (mode == LookupMode.EVERYTHING) {
@@ -212,11 +210,6 @@ class LazyImportResolver(
     public fun getImportScope(directive: JetImportDirective, lookupMode: LookupMode): JetScope {
         return importedScopesProvider(directive).scopeForMode(lookupMode)
     }
-
-    public fun printScopeStructure(p: Printer) {
-        p.print("rootScope = ")
-        rootScope.printScopeStructure(p.withholdIndentOnce())
-    }
 }
 
 class LazyImportScope(
@@ -300,8 +293,6 @@ class LazyImportScope(
         p.pushIndent()
 
         p.println("containingDeclaration = ", containingDeclaration)
-
-        importResolver.printScopeStructure(p)
 
         p.popIndent()
         p.println("}")
