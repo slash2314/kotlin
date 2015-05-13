@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.utils.*
 import java.util.ArrayList
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 
-public class SubpackagesScope(private val containingDeclaration: PackageViewDescriptor) : JetScopeImpl() {
+public class SubpackagesScope(private val containingDeclaration: PackageViewDescriptorImpl) : JetScopeImpl() {
     override fun getContainingDeclaration(): DeclarationDescriptor {
         return containingDeclaration
     }
