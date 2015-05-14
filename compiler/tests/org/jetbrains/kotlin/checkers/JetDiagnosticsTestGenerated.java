@@ -4248,6 +4248,12 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("enumOldConstructorNamedArgument.kt")
+            public void testEnumOldConstructorNamedArgument() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/enum/enumOldConstructorNamedArgument.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("enumOldConstructors.kt")
             public void testEnumOldConstructors() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/enum/enumOldConstructors.kt");
