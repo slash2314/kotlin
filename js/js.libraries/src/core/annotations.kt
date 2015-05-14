@@ -29,3 +29,8 @@ native
 public annotation class library(public val name: String = "")
 native
 public annotation class enumerable()
+
+// TODO make it "internal" or "fake"
+native
+deprecated("Do not use this annotation: it is for internal use only")
+public annotation class marker
