@@ -206,6 +206,6 @@ public class KotlinIndicesHelper(
         val importDirective = JetPsiFactory(project).createImportDirective(ImportPath(fqName, false))
         val qualifiedExpressionResolver = QualifiedExpressionResolver()
         qualifiedExpressionResolver.setSymbolUsageValidator(SymbolUsageValidator.Empty)
-        return qualifiedExpressionResolver.processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING, false).getAllDescriptors()
+        return qualifiedExpressionResolver.processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING).getAllDescriptors()
     }
 }

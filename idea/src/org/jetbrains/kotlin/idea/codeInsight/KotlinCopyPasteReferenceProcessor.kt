@@ -320,7 +320,7 @@ public class KotlinCopyPasteReferenceProcessor() : CopyPastePostProcessor<Kotlin
         val qualifiedExpressionResolver = QualifiedExpressionResolver()
         qualifiedExpressionResolver.setSymbolUsageValidator(SymbolUsageValidator.Empty)
         return qualifiedExpressionResolver
-                .processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING, false)
+                .processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING)
                 .getAllDescriptors()
     }
 

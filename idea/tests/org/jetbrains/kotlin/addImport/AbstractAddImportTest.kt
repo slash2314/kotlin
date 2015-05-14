@@ -44,7 +44,7 @@ public abstract class AbstractAddImportTest : AbstractImportsTest() {
         val importDirective = JetPsiFactory(getProject()).createImportDirective(descriptorName)
         val moduleDescriptor = file.getResolutionFacade().findModuleDescriptor(file)
         val descriptors = InjectorForTests(getProject(), moduleDescriptor).getQualifiedExpressionResolver()
-                .processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING, false)
+                .processImportReference(importDirective, moduleDescriptor, BindingTraceContext(), LookupMode.EVERYTHING)
                 .getAllDescriptors()
                 .filter(filter)
 
