@@ -170,7 +170,7 @@ public class LazyTopDownAnalyzer {
 
                         @Override
                         public void visitPackageDirective(@NotNull JetPackageDirective directive) {
-                            DescriptorResolver.resolvePackageHeader(directive, moduleDescriptor, trace);
+                            DescriptorResolver.resolvePackageHeader(directive, moduleDescriptor, trace, c.getStorageManager());
                         }
 
                         @Override

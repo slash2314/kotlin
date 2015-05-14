@@ -1209,17 +1209,17 @@ public class DescriptorResolver {
     public static void resolvePackageHeader(
             @NotNull JetPackageDirective packageDirective,
             @NotNull ModuleDescriptor module,
-            @NotNull BindingTrace trace
+            @NotNull BindingTrace trace,
+            @NotNull StorageManager storageManager
     ) {
         for (JetSimpleNameExpression nameExpression : packageDirective.getPackageNames()) {
             FqName fqName = packageDirective.getFqName(nameExpression);
 
-            PackageViewDescriptor packageView = module.getPackage(fqName);
-            assert packageView != null : "package not found: " + fqName;
+            PackageViewDescriptor packageView = new LazyPackageViewWrapper(fqName, module, storageManager);
             trace.record(REFERENCE_TARGET, nameExpression, packageView);
 
             PackageViewDescriptor parentPackageView = packageView.getContainingDeclaration();
-            assert parentPackageView != null : "package has no parent: " + packageView;
+            assert parentPackageView != null : "Should not be null since " + fqName + " should not be root";
             trace.record(RESOLUTION_SCOPE, nameExpression, parentPackageView.getMemberScope());
         }
     }
