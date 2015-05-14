@@ -116,7 +116,7 @@ public class ModuleDescriptorImpl(
 class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private val storageManager: StorageManager) : PackageViewManager {
     override fun getPackage(fqName: FqName): PackageViewDescriptor? {
         val fragments = module.packageFragmentProvider.getPackageFragments(fqName)
-        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, fragments, this) else null
+        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, fragments) else null
     }
 
     override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName> {
@@ -125,7 +125,7 @@ class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private v
 
     override fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor? {
         val fqName = packageView.getFqName()
-        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName, module, this, storageManager)
+        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName, module, storageManager)
     }
 }
 
@@ -136,15 +136,11 @@ class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private v
  ModuleDescriptor#getPackage should be used for most use cases
   */
 private class LazyPackageViewWrapper(
-        fqName: FqName, module: ModuleDescriptor, private val packageViewManager: PackageViewManager, storageManager: StorageManager
+        fqName: FqName, module: ModuleDescriptor, storageManager: StorageManager
 )
 : AbstractPackageViewDescriptor(fqName, module) {
-    override fun getContainingDeclaration(): PackageViewDescriptor? {
-        return packageViewManager.getParentView(this)
-    }
-
     private val _delegate = storageManager.createNullableLazyValue {
-        packageViewManager.getPackage(_fqName)
+        module.packageViewManager.getPackage(getFqName())
     }
 
     private val delegate: PackageViewDescriptor?
