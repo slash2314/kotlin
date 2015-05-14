@@ -187,7 +187,7 @@ public fun Element.addClass(vararg cssClasses: String): Boolean {
 public fun Element.removeClass(vararg cssClasses: String): Boolean {
     if (cssClasses.any { hasClass(it) }) {
         val toBeRemoved = cssClasses.toSet()
-        classes = classes.trim().split("\\s+").filter { it !in toBeRemoved }.joinToString(" ")
+        classes = classes.trim().split("\\s+".toRegex()).filter { it !in toBeRemoved }.joinToString(" ")
         return true
     }
 
@@ -208,7 +208,7 @@ public fun Node.removeFromParent() {
     parentNode?.removeChild(this)
 }
 
-private class NodeListAsList(val delegate: NodeList) : AbstractList<Node>() {
+private class NodeListAsList(private val delegate: NodeList) : AbstractList<Node>() {
     override fun size(): Int = delegate.length
 
     override fun get(index: Int): Node = when {
