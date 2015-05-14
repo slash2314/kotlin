@@ -1989,6 +1989,18 @@ public class JetExtractionTestGenerated extends AbstractJetExtractionTest {
                 doExtractFunctionTest(fileName);
             }
 
+            @TestMetadata("typeParameterNotResolvableInTargetScope.kt")
+            public void testTypeParameterNotResolvableInTargetScope() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/extractFunction/typeParameters/typeParameterNotResolvableInTargetScope.kt");
+                doExtractFunctionTest(fileName);
+            }
+
+            @TestMetadata("typeParameterResolvableInTargetScope.kt")
+            public void testTypeParameterResolvableInTargetScope() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/extractFunction/typeParameters/typeParameterResolvableInTargetScope.kt");
+                doExtractFunctionTest(fileName);
+            }
+
             @TestMetadata("typeParametersAndConstraintsCombined1.kt")
             public void testTypeParametersAndConstraintsCombined1() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/extractFunction/typeParameters/typeParametersAndConstraintsCombined1.kt");
@@ -2041,6 +2053,12 @@ public class JetExtractionTestGenerated extends AbstractJetExtractionTest {
             JetTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/refactoring/introduceProperty"), Pattern.compile("^(.+)\\.kt$"), true);
         }
 
+        @TestMetadata("extractExtensionWithInitializer.kt")
+        public void testExtractExtensionWithInitializer() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/extractExtensionWithInitializer.kt");
+            doIntroducePropertyTest(fileName);
+        }
+
         @TestMetadata("extractFromDefaultValueInConstructor.kt")
         public void testExtractFromDefaultValueInConstructor() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/extractFromDefaultValueInConstructor.kt");
@@ -2050,6 +2068,12 @@ public class JetExtractionTestGenerated extends AbstractJetExtractionTest {
         @TestMetadata("extractFromDefaultValueInFun.kt")
         public void testExtractFromDefaultValueInFun() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/extractFromDefaultValueInFun.kt");
+            doIntroducePropertyTest(fileName);
+        }
+
+        @TestMetadata("extractLazyExtension.kt")
+        public void testExtractLazyExtension() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/extractLazyExtension.kt");
             doIntroducePropertyTest(fileName);
         }
 
@@ -2194,6 +2218,18 @@ public class JetExtractionTestGenerated extends AbstractJetExtractionTest {
         @TestMetadata("replaceDuplicates.kt")
         public void testReplaceDuplicates() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/replaceDuplicates.kt");
+            doIntroducePropertyTest(fileName);
+        }
+
+        @TestMetadata("typeParameterNotResolvableInTargetScope.kt")
+        public void testTypeParameterNotResolvableInTargetScope() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/typeParameterNotResolvableInTargetScope.kt");
+            doIntroducePropertyTest(fileName);
+        }
+
+        @TestMetadata("typeParameterResolvableInTargetScope.kt")
+        public void testTypeParameterResolvableInTargetScope() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/refactoring/introduceProperty/typeParameterResolvableInTargetScope.kt");
             doIntroducePropertyTest(fileName);
         }
     }
