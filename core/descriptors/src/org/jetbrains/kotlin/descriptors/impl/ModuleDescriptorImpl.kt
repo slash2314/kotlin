@@ -55,7 +55,7 @@ public class ModuleDescriptorImpl(
     }
 
     private val dependencies: MutableList<ModuleDescriptorImpl> = ArrayList()
-    private var packageViewManager: PackageViewManager by Delegates.notNull()
+    override var packageViewManager: PackageViewManager by Delegates.notNull()
 
     private var packageFragmentProviderForModuleContent: PackageFragmentProvider? = null
 
@@ -111,14 +111,6 @@ public class ModuleDescriptorImpl(
 
     override val builtIns: KotlinBuiltIns
         get() = KotlinBuiltIns.getInstance()
-
-    override fun getPackage(fqName: FqName): PackageViewDescriptor? {
-        return packageViewManager.getPackage(fqName)
-    }
-
-    override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName> {
-        return packageViewManager.getSubPackagesOf(fqName, nameFilter)
-    }
 }
 
 class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private val storageManager: StorageManager) : PackageViewManager {

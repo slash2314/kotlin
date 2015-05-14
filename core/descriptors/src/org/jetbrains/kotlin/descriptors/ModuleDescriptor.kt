@@ -43,9 +43,9 @@ public trait ModuleDescriptor : DeclarationDescriptor {
         return visitor.visitModuleDeclaration(this, data)
     }
 
-    public fun getPackage(fqName: FqName): PackageViewDescriptor?
+    public fun getPackage(fqName: FqName): PackageViewDescriptor? = packageViewManager.getPackage(fqName)
 
-    public fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName>
+    public val packageViewManager: PackageViewManager
 }
 
 public trait PackageViewManager {
