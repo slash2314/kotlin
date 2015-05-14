@@ -89,7 +89,7 @@ abstract class KotlinDebuggerTestBase : KotlinDebuggerTestCase() {
     protected val dp: DebugProcessImpl
         get() = getDebugProcess() ?: throw AssertionError("createLocalProcess() should be called before getDebugProcess()")
 
-    protected fun onBreakpoint(doOnBreakpoint: SuspendContextImpl.() -> Unit) {
+    public fun onBreakpoint(tmp: Any? = null, doOnBreakpoint: SuspendContextImpl.() -> Unit) {
         super.onBreakpoint {
             initContexts(it)
             it.printContext()
