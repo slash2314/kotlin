@@ -17,15 +17,14 @@
 package org.jetbrains.kotlin.descriptors.impl
 
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.PackageFragmentProvider
-import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
-import org.jetbrains.kotlin.descriptors.PackageViewManager
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.resolve.ImportPath
+import org.jetbrains.kotlin.resolve.scopes.JetScope
+import org.jetbrains.kotlin.storage.StorageManager
 import java.util.ArrayList
 import java.util.LinkedHashSet
 import kotlin.properties.Delegates
@@ -56,6 +55,8 @@ public class ModuleDescriptorImpl(
     }
 
     private val dependencies: MutableList<ModuleDescriptorImpl> = ArrayList()
+    private var packageViewManager: PackageViewManager by Delegates.notNull()
+
     private var packageFragmentProviderForModuleContent: PackageFragmentProvider? = null
 
     private val packageFragmentProviderForWholeModuleWithDependencies by Delegates.lazy {
@@ -89,9 +90,10 @@ public class ModuleDescriptorImpl(
      * Call initialize() to set module contents. Uninitialized module cannot be queried for its contents.
      * Initialize() and seal() can be called in any order.
      */
-    public fun initialize(providerForModuleContent: PackageFragmentProvider) {
+    public fun initialize(providerForModuleContent: PackageFragmentProvider, packageViewManager: PackageViewManager) {
         assert(!isInitialized) { "Attempt to initialize module $id twice" }
-        packageFragmentProviderForModuleContent = providerForModuleContent
+        this.packageFragmentProviderForModuleContent = providerForModuleContent
+        this.packageViewManager = packageViewManager
     }
 
     public val packageFragmentProvider: PackageFragmentProvider
@@ -110,8 +112,6 @@ public class ModuleDescriptorImpl(
     override val builtIns: KotlinBuiltIns
         get() = KotlinBuiltIns.getInstance()
 
-    public var packageViewManager: PackageViewManager = PackageViewManagerImpl(this)
-
     override fun getPackage(fqName: FqName): PackageViewDescriptor? {
         return packageViewManager.getPackage(fqName)
     }
@@ -121,13 +121,45 @@ public class ModuleDescriptorImpl(
     }
 }
 
-class PackageViewManagerImpl(private val module: ModuleDescriptorImpl) : PackageViewManager {
+class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private val storageManager: StorageManager) : PackageViewManager {
     override fun getPackage(fqName: FqName): PackageViewDescriptor? {
         val fragments = module.packageFragmentProvider.getPackageFragments(fqName)
-        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, fragments) else null
+        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, fragments, this) else null
     }
 
     override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName> {
         return module.packageFragmentProvider.getSubPackagesOf(fqName, nameFilter)
     }
+
+    override fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor? {
+        val fqName = packageView.getFqName()
+        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName.parent())
+    }
+
+    private inner class LazyPackageViewWrapper(fqName: FqName) : AbstractPackageViewDescriptor(fqName, module) {
+        override fun getContainingDeclaration(): PackageViewDescriptor? {
+            return getParentView(this)
+        }
+
+        private val _delegate = storageManager.createNullableLazyValue {
+            getPackage(_fqName)
+        }
+
+        private val delegate: PackageViewDescriptor?
+            get() = _delegate()
+
+        override fun getMemberScope(): JetScope {
+            return delegate?.getMemberScope() ?: JetScope.Empty
+        }
+
+        override fun getFragments(): MutableList<PackageFragmentDescriptor> {
+            return delegate?.getFragments() ?: listOf()
+        }
+    }
+}
+
+//TODO_R: remove this overload, it's temporary
+public deprecated("This is temporary") fun ModuleDescriptorImpl.initialize(
+        providerForModuleContent: PackageFragmentProvider, storageManager: StorageManager) {
+    initialize(providerForModuleContent, PackageViewManagerImpl(this, storageManager))
 }

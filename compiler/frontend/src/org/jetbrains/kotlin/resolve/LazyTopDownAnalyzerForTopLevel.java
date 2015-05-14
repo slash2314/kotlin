@@ -21,12 +21,14 @@ import kotlin.KotlinPackage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider;
 import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider;
+import org.jetbrains.kotlin.descriptors.impl.ImplPackage;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.psi.JetFile;
 import org.jetbrains.kotlin.psi.JetScript;
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo;
 import org.jetbrains.kotlin.resolve.lazy.KotlinCodeAnalyzer;
 import org.jetbrains.kotlin.resolve.lazy.LazyFileScope;
+import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 
 import javax.inject.Inject;
 import java.util.Arrays;
@@ -64,7 +66,8 @@ public class LazyTopDownAnalyzerForTopLevel {
                     additionalProviders));
         }
 
-        ((ModuleDescriptorImpl) resolveSession.getModuleDescriptor()).initialize(provider);
+        //TODO_R: inject
+        ImplPackage.initialize((ModuleDescriptorImpl) resolveSession.getModuleDescriptor(), provider, LockBasedStorageManager.NO_LOCKS);
 
         return analyzeDeclarations(topDownAnalysisParameters, files);
     }

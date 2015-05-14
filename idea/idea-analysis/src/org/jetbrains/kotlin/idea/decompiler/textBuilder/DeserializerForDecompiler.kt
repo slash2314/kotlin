@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.MutablePackageFragmentDescriptor
+import org.jetbrains.kotlin.descriptors.impl.initialize
 import org.jetbrains.kotlin.load.kotlin.BinaryClassAnnotationAndConstantLoaderImpl
 import org.jetbrains.kotlin.load.kotlin.JavaFlexibleTypeCapabilitiesDeserializer
 import org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache
@@ -90,13 +91,13 @@ public class DeserializerForDecompiler(val packageDirectory: VirtualFile, val di
     }
 
     init {
-        moduleDescriptor.initialize(packageFragmentProvider)
+        moduleDescriptor.initialize(packageFragmentProvider, storageManager)
         moduleDescriptor.addDependencyOnModule(moduleDescriptor)
         moduleDescriptor.addDependencyOnModule(KotlinBuiltIns.getInstance().getBuiltInsModule())
         val moduleContainingMissingDependencies = createDummyModule("module containing missing dependencies for decompiled sources")
         moduleContainingMissingDependencies.addDependencyOnModule(moduleContainingMissingDependencies)
         moduleContainingMissingDependencies.initialize(
-                PackageFragmentProviderForMissingDependencies(moduleContainingMissingDependencies)
+                PackageFragmentProviderForMissingDependencies(moduleContainingMissingDependencies), storageManager
         )
         moduleDescriptor.addDependencyOnModule(moduleContainingMissingDependencies)
         moduleDescriptor.seal()

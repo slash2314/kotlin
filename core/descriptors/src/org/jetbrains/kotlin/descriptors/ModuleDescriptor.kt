@@ -52,4 +52,6 @@ public trait PackageViewManager {
     public fun getPackage(fqName: FqName): PackageViewDescriptor?
 
     public fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName>
+
+    public fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor?
 }

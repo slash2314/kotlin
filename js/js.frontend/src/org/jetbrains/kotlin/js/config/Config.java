@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider;
+import org.jetbrains.kotlin.descriptors.impl.ImplPackage;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS;
 import org.jetbrains.kotlin.psi.JetFile;
@@ -149,10 +150,12 @@ public abstract class Config {
     private static ModuleDescriptorImpl createModuleDescriptor(KotlinJavascriptMetadata metadata) {
         ModuleDescriptorImpl moduleDescriptor = TopDownAnalyzerFacadeForJS.createJsModule("<" + metadata.getModuleName() + ">");
 
+        LockBasedStorageManager storageManager = new LockBasedStorageManager();
         PackageFragmentProvider provider =
-                KotlinJavascriptSerializationUtil.createPackageFragmentProvider(moduleDescriptor, metadata.getBody(), new LockBasedStorageManager());
+                KotlinJavascriptSerializationUtil.createPackageFragmentProvider(moduleDescriptor, metadata.getBody(),
+                                                                                storageManager);
 
-        moduleDescriptor.initialize(provider != null ? provider : PackageFragmentProvider.Empty.INSTANCE$);
+        ImplPackage.initialize(moduleDescriptor, provider != null ? provider : PackageFragmentProvider.Empty.INSTANCE$, storageManager);
         moduleDescriptor.addDependencyOnModule(KotlinBuiltIns.getInstance().getBuiltInsModule());
 
         return moduleDescriptor;

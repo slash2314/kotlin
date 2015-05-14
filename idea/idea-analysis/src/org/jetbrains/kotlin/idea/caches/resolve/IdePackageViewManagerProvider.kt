@@ -34,7 +34,7 @@ import org.jetbrains.kotlin.storage.StorageManager
 
 public class IdePackageViewManagerProvider(private val project: Project) : PackageViewManagerProvider {
     override fun createPVM(moduleDescriptor: ModuleDescriptor, info: ModuleInfo, storageManager: StorageManager): PackageViewManager {
-        val delegate = PackageViewManagerImpl(moduleDescriptor as ModuleDescriptorImpl)
+        val delegate = PackageViewManagerImpl(moduleDescriptor as ModuleDescriptorImpl, storageManager)
         val ideaModuleInfo = info as IdeaModuleInfo
         if (ideaModuleInfo !is ModuleSourceInfo) return delegate
 
@@ -52,6 +52,9 @@ public class IdePackageViewManagerProvider(private val project: Project) : Packa
                 return delegate.getSubPackagesOf(fqName, nameFilter)
             }
 
+            override fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor? {
+                return delegate.getParentView(packageView)
+            }
         }
     }
 }

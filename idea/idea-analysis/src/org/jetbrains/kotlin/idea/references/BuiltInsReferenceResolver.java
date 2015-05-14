@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
 import org.jetbrains.kotlin.context.ContextPackage;
 import org.jetbrains.kotlin.context.GlobalContextImpl;
 import org.jetbrains.kotlin.descriptors.*;
+import org.jetbrains.kotlin.descriptors.impl.ImplPackage;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.di.InjectorForLazyResolve;
 import org.jetbrains.kotlin.name.Name;
@@ -111,7 +112,7 @@ public class BuiltInsReferenceResolver extends AbstractProjectComponent {
                                                    AdditionalCheckerProvider.DefaultProvider.INSTANCE$,
                                                    new DynamicTypesSettings());
 
-                module.initialize(injectorForLazyResolve.getResolveSession().getPackageFragmentProvider());
+                ImplPackage.initialize(module, injectorForLazyResolve.getResolveSession().getPackageFragmentProvider(), globalContext.getStorageManager());
 
                 if (!ApplicationManager.getApplication().isUnitTestMode()) {
                     // Use lazy initialization in tests

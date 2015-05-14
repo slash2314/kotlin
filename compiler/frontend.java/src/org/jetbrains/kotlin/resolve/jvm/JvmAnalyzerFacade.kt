@@ -16,11 +16,7 @@
 
 package org.jetbrains.kotlin.resolve.jvm
 
-import org.jetbrains.kotlin.analyzer.AnalyzerFacade
-import org.jetbrains.kotlin.analyzer.ResolverForModule
 import org.jetbrains.kotlin.resolve.lazy.ResolveSession
-import org.jetbrains.kotlin.analyzer.PlatformAnalysisParameters
-import org.jetbrains.kotlin.analyzer.ResolverForProject
 import org.jetbrains.kotlin.platform.JavaToKotlinClassMap
 import org.jetbrains.kotlin.resolve.lazy.declarations.DeclarationProviderFactoryService
 import com.intellij.openapi.project.Project
@@ -29,8 +25,6 @@ import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider
 import org.jetbrains.kotlin.load.java.structure.JavaClass
 import org.jetbrains.kotlin.load.java.lazy.ModuleClassResolverImpl
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
-import org.jetbrains.kotlin.analyzer.ModuleInfo
-import org.jetbrains.kotlin.analyzer.ModuleContent
 import org.jetbrains.kotlin.di.InjectorForLazyResolveWithJava
 import org.jetbrains.kotlin.resolve.CodeAnalyzerInitializer
 import com.intellij.psi.search.GlobalSearchScope
@@ -38,6 +32,8 @@ import java.util.ArrayList
 import org.jetbrains.kotlin.extensions.ExternalDeclarationsProvider
 import kotlin.platform.platformStatic
 import com.intellij.openapi.module.Module
+import org.jetbrains.kotlin.analyzer.*
+import org.jetbrains.kotlin.descriptors.impl.PackageViewManagerImpl
 import org.jetbrains.kotlin.psi.JetFile
 
 public class JvmResolverForModule(
@@ -62,8 +58,9 @@ public object JvmAnalyzerFacade : AnalyzerFacade<JvmResolverForModule, JvmPlatfo
     ): JvmResolverForModule {
         val (syntheticFiles, moduleContentScope) = moduleContent
         val filesToAnalyze = getAllFilesToAnalyze(project, moduleInfo, syntheticFiles)
+        val storageManager = globalContext.storageManager
         val declarationProviderFactory = DeclarationProviderFactoryService.createDeclarationProviderFactory(
-                project, globalContext.storageManager, filesToAnalyze,
+                project, storageManager, filesToAnalyze,
                 if (moduleInfo.isLibrary) GlobalSearchScope.EMPTY_SCOPE else moduleContentScope
         )
 
@@ -81,7 +78,8 @@ public object JvmAnalyzerFacade : AnalyzerFacade<JvmResolverForModule, JvmPlatfo
         val resolveSession = injector.getResolveSession()!!
         val javaDescriptorResolver = injector.getJavaDescriptorResolver()!!
         val providersForModule = listOf(resolveSession.getPackageFragmentProvider(), javaDescriptorResolver.packageFragmentProvider)
-        moduleDescriptor.initialize(CompositePackageFragmentProvider(providersForModule))
+        val packageViewManager = PackageViewManagerProvider.getInstance(project)?.createPVM(moduleDescriptor, moduleInfo, storageManager)
+        moduleDescriptor.initialize(CompositePackageFragmentProvider(providersForModule), packageViewManager ?: PackageViewManagerImpl(moduleDescriptor, storageManager))
         return JvmResolverForModule(resolveSession, javaDescriptorResolver)
     }
 
