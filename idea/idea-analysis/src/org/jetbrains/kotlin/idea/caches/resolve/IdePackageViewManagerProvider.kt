@@ -22,10 +22,12 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.Processor
 import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.analyzer.PackageViewManagerProvider
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewManager
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
+import org.jetbrains.kotlin.descriptors.impl.PackageViewDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.PackageViewManagerImpl
 import org.jetbrains.kotlin.idea.stubindex.PackageIndexUtil
 import org.jetbrains.kotlin.name.FqName
@@ -40,10 +42,19 @@ public class IdePackageViewManagerProvider(private val project: Project) : Packa
 
         val ideaModule = ideaModuleInfo.module
         val moduleWithDependenciesScope = ideaModule.getModuleWithDependenciesAndLibrariesScope(ideaModuleInfo.isTests())
-
+        val bpf = KotlinBuiltIns.getInstance().getBuiltInsPackageFragment()
+        val bfqn = bpf.fqName
         return object : PackageViewManager {
             private val packages = storageManager.createMemoizedFunctionWithNullableValues { fqName: FqName ->
-                if (!packageExistsInJavaOrKotlin(project, moduleWithDependenciesScope, fqName)) null else delegate.getPackage(fqName)
+                if (packageExistsInJavaOrKotlin(project, moduleWithDependenciesScope, fqName)) {
+                    delegate.getPackage(fqName)
+                }
+                else if (fqName == bfqn) {
+                    PackageViewDescriptorImpl(moduleDescriptor, fqName, listOf(bpf))
+                }
+                else {
+                    null
+                }
             }
 
             override fun getPackage(fqName: FqName): PackageViewDescriptor? = packages(fqName)
