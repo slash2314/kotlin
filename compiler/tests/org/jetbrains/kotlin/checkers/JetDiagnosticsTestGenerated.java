@@ -10703,6 +10703,12 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
                     doTest(fileName);
                 }
 
+                @TestMetadata("invokeNonExtensionLambdaInContext.kt")
+                public void testInvokeNonExtensionLambdaInContext() throws Exception {
+                    String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/resolve/invoke/invokeNonExtensionLambdaInContext.kt");
+                    doTest(fileName);
+                }
+
                 @TestMetadata("KT-4372.kt")
                 public void testKT_4372() throws Exception {
                     String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/resolve/invoke/KT-4372.kt");
