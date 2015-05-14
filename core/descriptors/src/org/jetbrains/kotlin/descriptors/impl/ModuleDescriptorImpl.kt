@@ -133,28 +133,37 @@ class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private v
 
     override fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor? {
         val fqName = packageView.getFqName()
-        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName.parent())
+        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName, module, this, storageManager)
+    }
+}
+
+/*
+ this wrapper should only be created to save computation for package view
+ that is known to exist but we do not necessarily need to query its contents
+
+ ModuleDescriptor#getPackage should be used for most use cases
+  */
+private class LazyPackageViewWrapper(
+        fqName: FqName, module: ModuleDescriptor, private val packageViewManager: PackageViewManager, storageManager: StorageManager
+)
+: AbstractPackageViewDescriptor(fqName, module) {
+    override fun getContainingDeclaration(): PackageViewDescriptor? {
+        return packageViewManager.getParentView(this)
     }
 
-    private inner class LazyPackageViewWrapper(fqName: FqName) : AbstractPackageViewDescriptor(fqName, module) {
-        override fun getContainingDeclaration(): PackageViewDescriptor? {
-            return getParentView(this)
-        }
+    private val _delegate = storageManager.createNullableLazyValue {
+        packageViewManager.getPackage(_fqName)
+    }
 
-        private val _delegate = storageManager.createNullableLazyValue {
-            getPackage(_fqName)
-        }
+    private val delegate: PackageViewDescriptor?
+        get() = _delegate()
 
-        private val delegate: PackageViewDescriptor?
-            get() = _delegate()
+    override fun getMemberScope(): JetScope {
+        return delegate?.getMemberScope() ?: JetScope.Empty
+    }
 
-        override fun getMemberScope(): JetScope {
-            return delegate?.getMemberScope() ?: JetScope.Empty
-        }
-
-        override fun getFragments(): MutableList<PackageFragmentDescriptor> {
-            return delegate?.getFragments() ?: listOf()
-        }
+    override fun getFragments(): MutableList<PackageFragmentDescriptor> {
+        return delegate?.getFragments() ?: listOf()
     }
 }
 
