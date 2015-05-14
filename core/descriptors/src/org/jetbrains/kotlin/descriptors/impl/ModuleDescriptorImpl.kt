@@ -125,7 +125,7 @@ class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private v
 
     override fun getParentView(packageView: PackageViewDescriptor): PackageViewDescriptor? {
         val fqName = packageView.getFqName()
-        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName, module, storageManager)
+        return if (fqName.isRoot()) null else return LazyPackageViewWrapper(fqName.parent(), module, storageManager)
     }
 }
 
