@@ -3069,6 +3069,12 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("withNamedArgument.kt")
+            public void testWithNamedArgument() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumConstructor/withNamedArgument.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("withOverloads.kt")
             public void testWithOverloads() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumConstructor/withOverloads.kt");
