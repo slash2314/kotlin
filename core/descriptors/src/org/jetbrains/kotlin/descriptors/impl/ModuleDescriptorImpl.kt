@@ -136,7 +136,7 @@ class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private v
 
  ModuleDescriptor#getPackage should be used for most use cases
   */
-private class LazyPackageViewWrapper(
+public class LazyPackageViewWrapper(
         fqName: FqName, module: ModuleDescriptor, storageManager: StorageManager
 )
 : AbstractPackageViewDescriptor(fqName, module) {
