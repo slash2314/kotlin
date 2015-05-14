@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.resolve.lazy
 
 import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
+import org.jetbrains.kotlin.descriptors.impl.LazyPackageViewWrapper
 import org.jetbrains.kotlin.descriptors.impl.SubpackagesScope
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.JetCodeFragment
@@ -67,8 +68,8 @@ class LazyFileScope private(
             else
                 file.getImportDirectives()
 
-            val packageView = getPackageViewDescriptor(file, resolveSession)
             val moduleDescriptor = resolveSession.getModuleDescriptor()
+            val packageView = LazyPackageViewWrapper(file.getPackageFqName(), moduleDescriptor, resolveSession.getStorageManager())
             val packageFragment = resolveSession.getPackageFragment(file.getPackageFqName())
                     .sure { "Could not find fragment ${file.getPackageFqName()} for file ${file.getName()}" }
 
@@ -95,12 +96,6 @@ class LazyFileScope private(
             scopeChain.add(LazyImportScope(packageFragment, allUnderImportResolver, LazyImportScope.FilteringKind.INVISIBLE_CLASSES, "All under imports in $debugName (invisible classes only)"))
 
             return LazyFileScope(scopeChain, aliasImportResolver, allUnderImportResolver, packageFragment, debugName)
-        }
-
-        private fun getPackageViewDescriptor(file: JetFile, resolveSession: ResolveSession): PackageViewDescriptor {
-            val fqName = file.getPackageFqName()
-            return resolveSession.getModuleDescriptor().getPackage(fqName)
-                ?: throw IllegalStateException("Package not found: $fqName maybe the file is not in scope of this resolve session: ${file.getName()}")
         }
     }
 }
