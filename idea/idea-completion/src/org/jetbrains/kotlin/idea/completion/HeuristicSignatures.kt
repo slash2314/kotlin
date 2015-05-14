@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.resolve.JetModuleUtil
 import org.jetbrains.kotlin.psi.JetPsiFactory
 import org.jetbrains.kotlin.resolve.BindingTraceContext
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
+import org.jetbrains.kotlin.descriptors.impl.SubpackagesScope
 import org.jetbrains.kotlin.resolve.scopes.JetScope
 import org.jetbrains.kotlin.resolve.scopes.ChainedScope
 import org.jetbrains.kotlin.types.TypeUtils
@@ -92,7 +93,7 @@ public object HeuristicSignatures {
     private fun typeFromText(text: String, typeParameters: Collection<TypeParameterDescriptor>, moduleDescriptor: ModuleDescriptor, project: Project): JetType {
         val typeRef = JetPsiFactory(project).createType(text)
         val injector = InjectorForMacros(project, moduleDescriptor)
-        val rootPackagesScope = JetModuleUtil.getSubpackagesOfRootScope(moduleDescriptor)
+        val rootPackagesScope = SubpackagesScope(moduleDescriptor, FqName.ROOT)
         val typeParametersScope = TypeParametersScope(typeParameters)
         val scope = ChainedScope(moduleDescriptor, "Root packages + type parameters", typeParametersScope, rootPackagesScope)
         val type = injector.getTypeResolver().resolveType(scope, typeRef, BindingTraceContext(), false)
