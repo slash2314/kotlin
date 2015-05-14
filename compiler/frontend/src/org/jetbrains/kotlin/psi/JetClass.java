@@ -22,6 +22,7 @@ import com.intellij.navigation.ItemPresentationProviders;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
@@ -76,6 +77,24 @@ public class JetClass extends JetTypeParameterListOwnerStub<KotlinClassStub> imp
         JetParameterList list = getPrimaryConstructorParameterList();
         if (list == null) return Collections.emptyList();
         return list.getParameters();
+    }
+
+    @NotNull
+    public JetPrimaryConstructor createPrimaryConstructorIfAbsent() {
+        JetPrimaryConstructor constructor = getPrimaryConstructor();
+        if (constructor != null) return constructor;
+        PsiElement anchor = getTypeParameterList();
+        if (anchor == null) anchor = getNameIdentifier();
+        if (anchor == null) anchor = getLastChild();
+        return (JetPrimaryConstructor) addAfter(new JetPsiFactory(getProject()).createPrimaryConstructor(), anchor);
+    }
+
+    @NotNull
+    public JetParameterList createPrimaryConstructorParameterListIfAbsent() {
+        JetPrimaryConstructor constructor = createPrimaryConstructorIfAbsent();
+        JetParameterList parameterList = constructor.getValueParameterList();
+        if (parameterList != null) return parameterList;
+        return (JetParameterList) constructor.add(new JetPsiFactory(getProject()).createParameterList("()"));
     }
 
     @Override
@@ -236,5 +255,10 @@ public class JetClass extends JetTypeParameterListOwnerStub<KotlinClassStub> imp
     public List<JetSecondaryConstructor> getSecondaryConstructors() {
         JetClassBody body = getBody();
         return body != null ? body.getSecondaryConstructors() : Collections.<JetSecondaryConstructor>emptyList();
+    }
+
+    @Nullable
+    public PsiElement getClassOrTraitKeyword() {
+        return findChildByType(TokenSet.create(JetTokens.CLASS_KEYWORD, JetTokens.TRAIT_KEYWORD));
     }
 }

@@ -17,9 +17,20 @@
 package org.jetbrains.kotlin.idea.intentions
 
 import com.intellij.openapi.editor.Editor
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.tree.IElementType
+import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
+import org.jetbrains.kotlin.idea.quickfix.moveCaret
+import org.jetbrains.kotlin.idea.util.isUnit
+import org.jetbrains.kotlin.idea.util.psi.patternMatching.matches
 import org.jetbrains.kotlin.lexer.JetTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.*
+import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
+import org.jetbrains.kotlin.utils.addToStdlib.lastIsInstanceOrNull
 
 public class InvertIfConditionIntention : JetSelfTargetingIntention<JetIfExpression>(javaClass(), "Invert 'if' condition") {
     override fun isApplicableTo(element: JetIfExpression, caretOffset: Int): Boolean {
@@ -28,13 +39,20 @@ public class InvertIfConditionIntention : JetSelfTargetingIntention<JetIfExpress
     }
 
     override fun applyTo(element: JetIfExpression, editor: Editor) {
-        val psiFactory = JetPsiFactory(element)
+        val newCondition = negate(element.getCondition()!!)
 
-        val condition = element.getCondition()!!
-        val newCondition = negate(condition)
+        val newIf = handleSpecialCases(element, newCondition)
+                    ?: handleStandardCase(element, newCondition)
 
-        val thenBranch = element.getThen()
-        val elseBranch = element.getElse() ?: psiFactory.createEmptyBody()
+        PsiDocumentManager.getInstance(newIf.getProject()).doPostponedOperationsAndUnblockDocument(editor.getDocument())
+        editor.moveCaret(newIf.getTextOffset())
+    }
+
+    private fun handleStandardCase(ifExpression: JetIfExpression, newCondition: JetExpression): JetIfExpression {
+        val psiFactory = JetPsiFactory(ifExpression)
+
+        val thenBranch = ifExpression.getThen()!!
+        val elseBranch = ifExpression.getElse() ?: psiFactory.createEmptyBody()
 
         val newThen = if (elseBranch is JetIfExpression)
             psiFactory.wrapInABlock(elseBranch)
@@ -46,7 +64,155 @@ public class InvertIfConditionIntention : JetSelfTargetingIntention<JetIfExpress
         else
             thenBranch
 
-        element.replace(psiFactory.createIf(newCondition, newThen, newElse))
+        return ifExpression.replaced(psiFactory.createIf(newCondition, newThen, newElse))
+    }
+
+    private fun handleSpecialCases(ifExpression: JetIfExpression, newCondition: JetExpression): JetIfExpression? {
+        val elseBranch = ifExpression.getElse()
+        if (elseBranch != null) return null
+
+        val factory = JetPsiFactory(ifExpression)
+
+        val thenBranch = ifExpression.getThen()!!
+        val lastThenStatement = thenBranch.lastBlockStatementOrThis()
+        if (lastThenStatement.isExitStatement()) {
+            val block = ifExpression.getParent() as? JetBlockExpression
+            if (block != null) {
+                val rBrace = block.getRBrace()
+                val afterIfInBlock = ifExpression.siblings(withItself = false)
+                        .takeWhile { it != rBrace }
+                        .toList()
+                val lastStatementInBlock = afterIfInBlock.lastIsInstanceOrNull<JetExpression>()
+                if (lastStatementInBlock != null) {
+                    val exitStatementAfterIf = if (lastStatementInBlock.isExitStatement())
+                        lastStatementInBlock
+                    else
+                        exitStatementExecutedAfter(lastStatementInBlock)
+                    if (exitStatementAfterIf != null) {
+                        val first = afterIfInBlock.first()
+                        val last = afterIfInBlock.last()
+                        // build new then branch text from statements after if (we will add exit statement if necessary later)
+                        var newIfBodyText = ifExpression.getContainingFile().getText().substring(first.startOffset, last.endOffset).trim()
+
+                        // remove statements after if as they are moving under if
+                        block.deleteChildRange(first, last)
+
+                        if (lastThenStatement is JetReturnExpression && lastThenStatement.getReturnedExpression() == null) {
+                            lastThenStatement.delete()
+                        }
+                        val updatedIf = copyThenBranchAfter(ifExpression)
+
+                        // check if we need to add exit statement to then branch
+                        if (exitStatementAfterIf != lastStatementInBlock) {
+                            // don't insert the exit statement, if the new if statement placement has the same exit statement executed after it
+                            val exitAfterNewIf = exitStatementExecutedAfter(updatedIf)
+                            if (exitAfterNewIf == null || !exitAfterNewIf.matches(exitStatementAfterIf)) {
+                                newIfBodyText += "\n" + exitStatementAfterIf.getText()
+                            }
+                        }
+
+                        //TODO: no block if single?
+                        val newIf = factory.createExpressionByPattern("if ($0) { $1 }", newCondition, newIfBodyText)
+                        return updatedIf.replace(newIf) as JetIfExpression
+                    }
+                }
+            }
+        }
+
+
+        val exitStatement = exitStatementExecutedAfter(ifExpression) ?: return null
+
+        val updatedIf = copyThenBranchAfter(ifExpression)
+        val newIf = factory.createExpressionByPattern("if ($0) $1", newCondition, exitStatement)
+        return updatedIf.replace(newIf) as JetIfExpression
+    }
+
+    private fun copyThenBranchAfter(ifExpression: JetIfExpression): JetIfExpression {
+        val factory = JetPsiFactory(ifExpression)
+        val thenBranch = ifExpression.getThen() ?: return ifExpression
+
+        val parent = ifExpression.getParent()
+        if (parent !is JetBlockExpression) {
+            assert(parent is JetContainerNode)
+            val block = factory.createEmptyBody()
+            block.addAfter(ifExpression, block.getLBrace())
+            val newBlock = ifExpression.replaced(block)
+            val newIf = newBlock.getStatements().single() as JetIfExpression
+            return copyThenBranchAfter(newIf)
+        }
+
+        if (thenBranch is JetBlockExpression) {
+            val range = thenBranch.contentRange()
+            if (range != null) {
+                parent.addRangeAfter(range.first, range.second, ifExpression)
+                parent.addAfter(factory.createNewLine(), ifExpression)
+            }
+        }
+        else {
+            parent.addAfter(thenBranch, ifExpression)
+            parent.addAfter(factory.createNewLine(), ifExpression)
+        }
+        return ifExpression
+    }
+
+    private fun JetBlockExpression.contentRange(): Pair<PsiElement, PsiElement>? {
+        val first = getLBrace()?.siblings(withItself = false)?.firstOrNull { it !is PsiWhiteSpace } ?: return null
+        val rBrace = getRBrace()
+        if (first == rBrace) return null
+        val last = rBrace!!.siblings(forward = false, withItself = false).first { it !is PsiWhiteSpace }
+        return Pair(first, last)
+    }
+
+    private fun exitStatementExecutedAfter(expression: JetExpression): JetExpression? {
+        val parent = expression.getParent()
+        if (parent is JetBlockExpression) {
+            val lastStatement = parent.getStatements().lastIsInstanceOrNull<JetExpression>()!!
+            if (expression == lastStatement) {
+                return exitStatementExecutedAfter(parent)
+            }
+            else {
+                if (lastStatement.isExitStatement() && expression.siblings(withItself = false).firstIsInstance<JetExpression>() == lastStatement) {
+                    return lastStatement
+                }
+                return null
+            }
+        }
+
+        when (parent) {
+            is JetNamedFunction -> {
+                if (parent.getBodyExpression() == expression) {
+                    if (!parent.hasBlockBody()) return null
+                    val returnType = (parent.resolveToDescriptor() as FunctionDescriptor).getReturnType()
+                    if (returnType == null || !returnType.isUnit()) return null
+                    return JetPsiFactory(expression).createExpression("return")
+                }
+            }
+
+            is JetContainerNode -> {
+                val pparent = parent.getParent()
+                when (pparent) {
+                    is JetLoopExpression -> {
+                        if (expression == pparent.getBody()) {
+                            return JetPsiFactory(expression).createExpression("continue")
+                        }
+                    }
+
+                    is JetIfExpression -> {
+                        if (expression == pparent.getThen() || expression == pparent.getElse()) {
+                            return exitStatementExecutedAfter(pparent)
+                        }
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun JetExpression.isExitStatement(): Boolean {
+        when (this) {
+            is JetContinueExpression, is JetBreakExpression, is JetThrowExpression, is JetReturnExpression -> return true
+            else -> return false
+        }
     }
 
     companion object {
@@ -75,10 +241,7 @@ public class InvertIfConditionIntention : JetSelfTargetingIntention<JetIfExpress
         private fun negate(expression: JetExpression): JetExpression {
             val specialNegation = specialNegationText(expression)
             if (specialNegation != null) return specialNegation
-
-            val negationExpr = JetPsiFactory(expression).createExpression("!a") as JetPrefixExpression
-            negationExpr.getBaseExpression()!!.replace(expression)
-            return negationExpr
+            return JetPsiFactory(expression).createExpressionByPattern("!$0", expression)
         }
 
         private fun specialNegationText(expression: JetExpression): JetExpression? {
@@ -94,11 +257,11 @@ public class InvertIfConditionIntention : JetSelfTargetingIntention<JetIfExpress
                 }
 
                 is JetBinaryExpression -> {
-                    val operator = expression.getOperationToken() ?: return null
+                    val operator = expression.getOperationToken()
                     if (operator !in NEGATABLE_OPERATORS) return null
                     val left = expression.getLeft() ?: return null
                     val right = expression.getRight() ?: return null
-                    return factory.createExpression(left.getText() + " " + getNegatedOperatorText(operator) + " " + right.getText())
+                    return factory.createExpressionByPattern("$0 $1 $2", left, getNegatedOperatorText(operator), right)
                 }
 
                 is JetConstantExpression -> {

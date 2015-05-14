@@ -44,10 +44,10 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.stubs.StubElement
 import org.jetbrains.kotlin.JetNodeTypes
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.utils.addToStdlib.lastIsInstanceOrNull
 
 public fun JetCallElement.getCallNameExpression(): JetSimpleNameExpression? {
-    val calleeExpression = getCalleeExpression()
-    if (calleeExpression == null) return null
+    val calleeExpression = getCalleeExpression() ?: return null
 
     return when (calleeExpression) {
         is JetSimpleNameExpression -> calleeExpression
@@ -122,17 +122,22 @@ public fun JetClassOrObject.effectiveDeclarations(): List<JetDeclaration> =
 public fun JetClass.isAbstract(): Boolean = isInterface() || hasModifier(JetTokens.ABSTRACT_KEYWORD)
 
 [suppress("UNCHECKED_CAST")]
-public fun <T: PsiElement> PsiElement.replaced(newElement: T): T = replace(newElement) as T
+public inline fun <reified T: PsiElement> PsiElement.replaced(newElement: T): T {
+    val result = replace(newElement)
+    return if (result is T)
+        result
+    else
+        (result as JetParenthesizedExpression).getExpression() as T
+}
 
 [suppress("UNCHECKED_CAST")]
 public fun <T: PsiElement> T.copied(): T = copy() as T
 
-public fun JetElement.blockExpressionsOrSingle(): Stream<JetElement> =
-        if (this is JetBlockExpression) getStatements().stream() else listOf(this).stream()
+public fun JetElement.blockExpressionsOrSingle(): Sequence<JetElement> =
+        if (this is JetBlockExpression) getStatements().asSequence() else sequenceOf(this)
 
-public fun JetElement.outermostLastBlockElement(predicate: (JetElement) -> Boolean = { true }): JetElement? {
-    return JetPsiUtil.getOutermostLastBlockElement(this) { e -> e != null && predicate(e) }
-}
+public fun JetExpression.lastBlockStatementOrThis(): JetExpression
+        = (this as? JetBlockExpression)?.getStatements()?.lastIsInstanceOrNull<JetExpression>() ?: this
 
 public fun JetBlockExpression.appendElement(element: JetElement): JetElement {
     val rBrace = getRBrace()
@@ -468,7 +473,7 @@ public fun PsiFile.elementsInRange(range: TextRange): List<PsiElement> {
                 }
         result.add(element)
 
-        offset = element.getTextRange().getEndOffset()
+        offset = element.endOffset
     }
     return result
 }
@@ -505,7 +510,7 @@ public fun PsiElement.getElementTextWithContext(): String {
     val topLevelElement = PsiTreeUtil.findFirstParent(this, { it.getParent() is PsiFile }) ?:
         throw AssertionError("For non-file element we should always be able to find parent in file children")
 
-    val startContextOffset = topLevelElement.getTextRange().getStartOffset()
+    val startContextOffset = topLevelElement.startOffset
     val elementContextOffset = getTextRange().getStartOffset()
 
     val inFileParentOffset = elementContextOffset - startContextOffset
@@ -578,7 +583,13 @@ public fun JetElement.getCalleeHighlightingRange(): TextRange {
             ) ?: return getTextRange()
 
     val startOffset = annotationEntry.getAtSymbol()?.getTextRange()?.getStartOffset()
-                      ?: annotationEntry.getCalleeExpression().getTextRange().getStartOffset()
+                      ?: annotationEntry.getCalleeExpression().startOffset
 
-    return TextRange(startOffset, annotationEntry.getCalleeExpression().getTextRange().getEndOffset())
+    return TextRange(startOffset, annotationEntry.getCalleeExpression().endOffset)
 }
+
+public val PsiElement.startOffset: Int
+    get() = getTextRange().getStartOffset()
+
+public val PsiElement.endOffset: Int
+    get() = getTextRange().getEndOffset()

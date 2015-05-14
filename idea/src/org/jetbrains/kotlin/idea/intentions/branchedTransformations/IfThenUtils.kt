@@ -16,66 +16,52 @@
 
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations
 
-import org.jetbrains.kotlin.lexer.JetTokens
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.refactoring.introduce.introduceVariable.KotlinIntroduceVariableHandler
-import org.jetbrains.kotlin.resolve.BindingContext
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.idea.refactoring.inline.KotlinInlineValHandler
-import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactory
-import org.jetbrains.kotlin.resolve.BindingContextUtils
-import org.jetbrains.kotlin.descriptors.VariableDescriptor
-import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.searches.ReferencesSearch
+import org.jetbrains.kotlin.JetNodeTypes
+import org.jetbrains.kotlin.descriptors.VariableDescriptor
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.refactoring.inline.KotlinInlineValHandler
+import org.jetbrains.kotlin.idea.refactoring.introduce.introduceVariable.KotlinIntroduceVariableHandler
+import org.jetbrains.kotlin.lexer.JetTokens
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.replaced
+import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.BindingContextUtils
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsStatement
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactory
 
-val NULL_PTR_EXCEPTION = "NullPointerException"
 val NULL_PTR_EXCEPTION_FQ = "java.lang.NullPointerException"
-val KOTLIN_NULL_PTR_EXCEPTION = "KotlinNullPointerException"
 val KOTLIN_NULL_PTR_EXCEPTION_FQ = "kotlin.KotlinNullPointerException"
 
-fun JetBinaryExpression.comparesNonNullToNull(): Boolean {
+fun JetBinaryExpression.expressionComparedToNull(): JetExpression? {
     val operationToken = this.getOperationToken()
-    val rhs = this.getRight()
-    val lhs = this.getLeft()
-    if (rhs == null || lhs == null) return false
+    if (operationToken != JetTokens.EQEQ && operationToken != JetTokens.EXCLEQ) return null
 
-    val rightIsNull = rhs.isNullExpression()
-    val leftIsNull = lhs.isNullExpression()
-    return leftIsNull != rightIsNull && (operationToken == JetTokens.EQEQ || operationToken == JetTokens.EXCLEQ)
+    val right = this.getRight() ?: return null
+    val left = this.getLeft() ?: return null
+
+    val rightIsNull = right.isNullExpression()
+    val leftIsNull = left.isNullExpression()
+    if (leftIsNull == rightIsNull) return null
+    return if (leftIsNull) right else left
 }
 
-fun JetExpression.extractExpressionIfSingle(): JetExpression? {
-    val innerExpression = JetPsiUtil.deparenthesize(this)
+fun JetExpression.unwrapBlockOrParenthesis(): JetExpression {
+    val innerExpression = JetPsiUtil.safeDeparenthesize(this)
     if (innerExpression is JetBlockExpression) {
-        return if (innerExpression.getStatements().size() == 1)
-            JetPsiUtil.deparenthesize(innerExpression.getStatements().firstOrNull() as? JetExpression)
-        else
-            null
+        val statement = innerExpression.getStatements().singleOrNull() as? JetExpression ?: return this
+        return JetPsiUtil.safeDeparenthesize(statement)
     }
-
     return innerExpression
 }
 
-fun JetExpression.isStatement(): Boolean = isUsedAsStatement(this.analyze())
+fun JetExpression?.isNullExpression(): Boolean = this?.unwrapBlockOrParenthesis()?.getNode()?.getElementType() == JetNodeTypes.NULL
 
-fun JetBinaryExpression.getNonNullExpression(): JetExpression? = when {
-    this.getLeft()?.isNullExpression() == false ->
-        this.getLeft()
-    this.getRight()?.isNullExpression() == false ->
-        this.getRight()
-    else ->
-        null
-}
-
-fun JetExpression.isNullExpression(): Boolean = this.extractExpressionIfSingle()?.getText() == "null"
-
-fun JetExpression.isNullExpressionOrEmptyBlock(): Boolean = this.isNullExpression() || this is JetBlockExpression && this.getStatements().isEmpty()
-
-fun JetExpression.isThrowExpression(): Boolean = this.extractExpressionIfSingle() is JetThrowExpression
+fun JetExpression?.isNullExpressionOrEmptyBlock(): Boolean = this.isNullExpression() || this is JetBlockExpression && this.getStatements().isEmpty()
 
 fun JetThrowExpression.throwsNullPointerExceptionWithNoArguments(): Boolean {
     val thrownExpression = this.getThrownExpression()
@@ -83,38 +69,28 @@ fun JetThrowExpression.throwsNullPointerExceptionWithNoArguments(): Boolean {
 
     val context = this.analyze()
     val descriptor = context.get(BindingContext.REFERENCE_TARGET, thrownExpression.getCalleeExpression() as JetSimpleNameExpression)
-    val declDescriptor = descriptor?.getContainingDeclaration()
-    if (declDescriptor == null) return false
+    val declDescriptor = descriptor?.getContainingDeclaration() ?: return false
 
     val exceptionName = DescriptorUtils.getFqName(declDescriptor).asString()
     return (exceptionName == NULL_PTR_EXCEPTION_FQ || exceptionName == KOTLIN_NULL_PTR_EXCEPTION_FQ) && thrownExpression.getValueArguments().isEmpty()
 }
 
-fun JetExpression.isNotNullExpression(): Boolean {
-    val innerExpression = this.extractExpressionIfSingle()
-    return innerExpression != null && innerExpression.getText() != "null"
-}
-
 fun JetExpression.evaluatesTo(other: JetExpression): Boolean {
-    return this.extractExpressionIfSingle()?.getText() == other.getText()
+    return this.unwrapBlockOrParenthesis().getText() == other.getText()
 }
 
 fun JetExpression.convertToIfNotNullExpression(conditionLhs: JetExpression, thenClause: JetExpression, elseClause: JetExpression?): JetIfExpression {
-    val condition = JetPsiFactory(this).createExpression("${conditionLhs.getText()} != null")
+    val condition = JetPsiFactory(this).createExpressionByPattern("$0 != null", conditionLhs)
     return this.convertToIfStatement(condition, thenClause, elseClause)
 }
 
 fun JetExpression.convertToIfNullExpression(conditionLhs: JetExpression, thenClause: JetExpression): JetIfExpression {
-    val condition = JetPsiFactory(this).createExpression("${conditionLhs.getText()} == null")
-    return this.convertToIfStatement(condition, thenClause, null)
+    val condition = JetPsiFactory(this).createExpressionByPattern("$0 == null", conditionLhs)
+    return this.convertToIfStatement(condition, thenClause)
 }
 
-fun JetExpression.convertToIfStatement(condition: JetExpression, thenClause: JetExpression, elseClause: JetExpression?): JetIfExpression {
-    val elseBranch = if (elseClause == null) "" else " else ${elseClause.getText()}"
-    val conditionalString = "if (${condition.getText()}) ${thenClause.getText()}$elseBranch"
-
-    val st = this.replace(conditionalString) as JetExpression
-    return JetPsiUtil.deparenthesize(st) as JetIfExpression
+fun JetExpression.convertToIfStatement(condition: JetExpression, thenClause: JetExpression, elseClause: JetExpression? = null): JetIfExpression {
+    return replaced(JetPsiFactory(this).createIf(condition, thenClause, elseClause))
 }
 
 fun JetIfExpression.introduceValueForCondition(occurrenceInThenClause: JetExpression, editor: Editor) {
@@ -126,9 +102,6 @@ fun JetIfExpression.introduceValueForCondition(occurrenceInThenClause: JetExpres
                                                  listOf(occurrenceInConditional, occurrenceInThenClause),
                                                  null)
 }
-
-fun JetElement.replace(expressionAsString: String): PsiElement =
-        this.replace(JetPsiFactory(this).createExpression(expressionAsString))
 
 fun JetSimpleNameExpression.inlineIfDeclaredLocallyAndOnlyUsedOnceWithPrompt(editor: Editor) {
     val declaration = this.getReference()?.resolve() as JetDeclaration

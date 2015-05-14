@@ -17,13 +17,21 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.canIntroduceSubject
+import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.inspections.IntentionBasedInspection
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingRangeIntention
+import org.jetbrains.kotlin.idea.intentions.branchedTransformations.getSubjectToIntroduce
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.introduceSubject
 import org.jetbrains.kotlin.psi.JetWhenExpression
 
-public class IntroduceWhenSubjectIntention : JetSelfTargetingOffsetIndependentIntention<JetWhenExpression>("introduce.when.subject", javaClass()) {
-    override fun isApplicableTo(element: JetWhenExpression): Boolean = element.canIntroduceSubject()
+public class IntroduceWhenSubjectInspection : IntentionBasedInspection<JetWhenExpression>(IntroduceWhenSubjectIntention())
+
+public class IntroduceWhenSubjectIntention : JetSelfTargetingRangeIntention<JetWhenExpression>(javaClass(), "Introduce argument to 'when'") {
+    override fun applicabilityRange(element: JetWhenExpression): TextRange? {
+        val subject = element.getSubjectToIntroduce() ?: return null
+        setText("Introduce '${subject.getText()}' as argument to 'when'")
+        return element.getWhenKeyword().getTextRange()
+    }
 
     override fun applyTo(element: JetWhenExpression, editor: Editor) {
         element.introduceSubject()

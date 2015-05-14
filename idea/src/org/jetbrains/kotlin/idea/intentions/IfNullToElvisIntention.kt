@@ -17,27 +17,34 @@
 package org.jetbrains.kotlin.idea.intentions
 
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementVisitor
-import org.jetbrains.kotlin.JetNodeTypes
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.inspections.IntentionBasedInspection
+import org.jetbrains.kotlin.idea.intentions.branchedTransformations.expressionComparedToNull
 import org.jetbrains.kotlin.idea.util.isNothing
 import org.jetbrains.kotlin.lexer.JetTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.replaced
 import org.jetbrains.kotlin.psi.psiUtil.siblings
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.util.ArrayList
 
-public class IfNullToElvisIntention : JetSelfTargetingOffsetIndependentIntention<JetIfExpression>(javaClass(), "Replace 'if' with elvis operator"){
-    override fun isApplicableTo(element: JetIfExpression): Boolean {
-        val data = calcData(element) ?: return false
+public class IfNullToElvisInspection : IntentionBasedInspection<JetIfExpression>(IfNullToElvisIntention())
 
-        val type = data.ifNullExpression.analyze().getType(data.ifNullExpression) ?: return false
-        if (!type.isNothing()) return false
+public class IfNullToElvisIntention : JetSelfTargetingRangeIntention<JetIfExpression>(javaClass(), "Replace 'if' with elvis operator"){
+    override fun applicabilityRange(element: JetIfExpression): TextRange? {
+        val data = calcData(element) ?: return null
 
-        return true
+        val type = data.ifNullExpression.analyze().getType(data.ifNullExpression) ?: return null
+        if (!type.isNothing()) return null
+
+        val rParen = element.getRightParenthesis() ?: return null
+        return TextRange(element.startOffset, rParen.endOffset)
     }
 
     override fun applyTo(element: JetIfExpression, editor: Editor) {
@@ -62,9 +69,7 @@ public class IfNullToElvisIntention : JetSelfTargetingOffsetIndependentIntention
             declaration.add(comment)
         }
 
-        val elvis = factory.createExpression("a ?: b") as JetBinaryExpression
-        elvis.getLeft()!!.replace(initializer)
-        elvis.getRight()!!.replace(ifNullExpr)
+        val elvis = factory.createExpressionByPattern("$0 ?: $1", initializer, ifNullExpr) as JetBinaryExpression
         val newElvis = initializer.replaced(elvis)
         element.delete()
 
@@ -86,14 +91,13 @@ public class IfNullToElvisIntention : JetSelfTargetingOffsetIndependentIntention
 
         val binaryExpression = ifExpression.getCondition() as? JetBinaryExpression ?: return null
         if (binaryExpression.getOperationToken() != JetTokens.EQEQ) return null
-        if (binaryExpression.getRight()?.getNode()?.getElementType() != JetNodeTypes.NULL) return null
-        val left = binaryExpression.getLeft() as? JetSimpleNameExpression ?: return null
+        val value = binaryExpression.expressionComparedToNull() as? JetSimpleNameExpression ?: return null
 
         if (ifExpression.getParent() !is JetBlockExpression) return null
         val prevStatement = ifExpression.siblings(forward = false, withItself = false)
                                     .firstIsInstanceOrNull<JetExpression>() ?: return null
         if (prevStatement !is JetVariableDeclaration) return null
-        if (prevStatement.getNameAsName() != left.getReferencedNameAsName()) return null
+        if (prevStatement.getNameAsName() != value.getReferencedNameAsName()) return null
         val initializer = prevStatement.getInitializer() ?: return null
         val then = ifExpression.getThen() ?: return null
 

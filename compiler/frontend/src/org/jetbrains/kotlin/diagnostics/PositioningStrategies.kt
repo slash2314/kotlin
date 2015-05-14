@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.JetNodeTypes
 import org.jetbrains.kotlin.lexer.JetKeywordToken
 import org.jetbrains.kotlin.lexer.JetTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.getCalleeHighlightingRange
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.utils.sure
@@ -321,13 +322,13 @@ public object PositioningStrategies {
 
     public val ELSE_ENTRY: PositioningStrategy<JetWhenEntry> = object : PositioningStrategy<JetWhenEntry>() {
         override fun mark(element: JetWhenEntry): List<TextRange> {
-            return markElement(element.getElseKeywordElement()!!)
+            return markElement(element.getElseKeyword()!!)
         }
     }
 
     public val WHEN_EXPRESSION: PositioningStrategy<JetWhenExpression> = object : PositioningStrategy<JetWhenExpression>() {
         override fun mark(element: JetWhenExpression): List<TextRange> {
-            return markElement(element.getWhenKeywordElement())
+            return markElement(element.getWhenKeyword())
         }
     }
 
@@ -387,7 +388,7 @@ public object PositioningStrategies {
         override fun mark(element: JetElement): List<TextRange> {
             if (element is JetConstantExpression) {
                 if (element.getNode().getElementType() == JetNodeTypes.INTEGER_CONSTANT) {
-                    val endOffset = element.getTextRange().getEndOffset()
+                    val endOffset = element.endOffset
                     return listOf(TextRange.create(endOffset - 1, endOffset))
                 }
             }

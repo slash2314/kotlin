@@ -17,74 +17,59 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.JetBundle
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
+import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingRangeIntention
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.*
 import org.jetbrains.kotlin.lexer.JetTokens
-import org.jetbrains.kotlin.psi.JetBinaryExpression
-import org.jetbrains.kotlin.psi.JetIfExpression
-import org.jetbrains.kotlin.psi.JetPostfixExpression
-import org.jetbrains.kotlin.psi.JetThrowExpression
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
+import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsStatement
 
-public class IfThenToDoubleBangIntention : JetSelfTargetingOffsetIndependentIntention<JetIfExpression>("if.then.to.double.bang", javaClass()) {
-
-    override fun isApplicableTo(element: JetIfExpression): Boolean {
-        val condition = element.getCondition()
-        val thenClause = element.getThen()
+public class IfThenToDoubleBangIntention : JetSelfTargetingRangeIntention<JetIfExpression>(javaClass(), "Replace 'if' expression with '!!' expression") {
+    override fun applicabilityRange(element: JetIfExpression): TextRange? {
+        val condition = element.getCondition() as? JetBinaryExpression ?: return null
+        val thenClause = element.getThen() ?: return null
         val elseClause = element.getElse()
 
-        if (condition !is JetBinaryExpression || !condition.comparesNonNullToNull()) return false
-
-        val expression = condition.getNonNullExpression()
-
-        if (expression == null) return false
+        val expression = condition.expressionComparedToNull() ?: return null
 
         val token = condition.getOperationToken()
-        if (token != JetTokens.EQEQ && token != JetTokens.EXCLEQ) return false
 
-        val throwExpression =
-                when (token) {
-                    JetTokens.EQEQ -> thenClause?.extractExpressionIfSingle()
-                    JetTokens.EXCLEQ -> elseClause?.extractExpressionIfSingle()
-                    else -> throw IllegalStateException("Token must be either '!=' or '==' ")
-                } as? JetThrowExpression
+        val throwExpression: JetThrowExpression
+        val matchingClause: JetExpression?
+        when (token) {
+            JetTokens.EQEQ -> {
+                throwExpression = thenClause.unwrapBlockOrParenthesis() as? JetThrowExpression ?: return null
+                matchingClause = elseClause
+            }
 
-        if (throwExpression == null) return false
+            JetTokens.EXCLEQ -> {
+                matchingClause = thenClause
+                throwExpression = elseClause?.unwrapBlockOrParenthesis() as? JetThrowExpression ?: return null
+            }
 
-        val matchingClause =
-                when (token) {
-                    JetTokens.EQEQ -> elseClause
-                    JetTokens.EXCLEQ -> thenClause
-                    else -> throw IllegalStateException("Token must be either '!=' or '==' ")
-                }
-
-        val matchesAsStatement = element.isStatement() && (matchingClause?.isNullExpressionOrEmptyBlock() ?: true)
-        val matches = matchesAsStatement || (matchingClause?.evaluatesTo(expression) ?: false && expression.isStableVariable())
-
-        if (matches) {
-            val message =
-                    if (throwExpression.throwsNullPointerExceptionWithNoArguments()) {
-                        JetBundle.message("if.then.to.double.bang")
-                    }
-                    else {
-                        // Warn that custom exception will be overwritten by intention action
-                        JetBundle.message("if.then.to.double.bang.replace.exception")
-                    }
-
-            setText(message)
-            return true
+            else -> throw IllegalStateException()
         }
-        else {
-            return false
+
+        val matchesAsStatement = element.isUsedAsStatement(element.analyze()) && (matchingClause?.isNullExpressionOrEmptyBlock() ?: true)
+        if (!matchesAsStatement && !(matchingClause?.evaluatesTo(expression) ?: false && expression.isStableVariable())) return null
+
+        var text = "Replace 'if' expression with '!!' expression"
+        if (!throwExpression.throwsNullPointerExceptionWithNoArguments()) {
+            text += " (will remove exception)"
         }
+
+        setText(text)
+        val rParen = element.getRightParenthesis() ?: return null
+        return TextRange(element.startOffset, rParen.endOffset)
     }
 
     override fun applyTo(element: JetIfExpression, editor: Editor) {
         val condition = element.getCondition() as JetBinaryExpression
-
-        val expression = checkNotNull(condition.getNonNullExpression(), "condition must contain non null expression")
-        val resultingExprString = expression.getText() + "!!"
-        val result = element.replace(resultingExprString) as JetPostfixExpression
+        val expression = condition.expressionComparedToNull()!!
+        val result = element.replace(JetPsiFactory(element).createExpressionByPattern("$0!!", expression)) as JetPostfixExpression
 
         result.inlineBaseExpressionIfApplicableWithPrompt(editor)
     }

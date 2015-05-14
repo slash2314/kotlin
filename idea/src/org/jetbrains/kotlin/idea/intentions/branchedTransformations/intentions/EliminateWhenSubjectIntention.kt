@@ -17,15 +17,48 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.canEliminateSubject
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.eliminateSubject
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingIntention
+import org.jetbrains.kotlin.idea.intentions.branchedTransformations.toExpression
+import org.jetbrains.kotlin.psi.JetPsiFactory
+import org.jetbrains.kotlin.psi.JetSimpleNameExpression
 import org.jetbrains.kotlin.psi.JetWhenExpression
+import org.jetbrains.kotlin.psi.buildExpression
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
-public class EliminateWhenSubjectIntention : JetSelfTargetingOffsetIndependentIntention<JetWhenExpression>("eliminate.when.subject", javaClass()) {
-    override fun isApplicableTo(element: JetWhenExpression): Boolean = element.canEliminateSubject()
+public class EliminateWhenSubjectIntention : JetSelfTargetingIntention<JetWhenExpression>(javaClass(), "Eliminate argument of 'when'") {
+    override fun isApplicableTo(element: JetWhenExpression, caretOffset: Int): Boolean {
+        if (element.getSubjectExpression() !is JetSimpleNameExpression) return false
+        val lBrace = element.getOpenBrace() ?: return false
+        return caretOffset <= lBrace.startOffset
+    }
 
     override fun applyTo(element: JetWhenExpression, editor: Editor) {
-        element.eliminateSubject()
+        val subject = element.getSubjectExpression()!!
+
+        val whenExpression = JetPsiFactory(element).buildExpression {
+            appendFixedText("when {\n")
+
+            for (entry in element.getEntries()) {
+                val branchExpression = entry.getExpression()
+
+                if (entry.isElse()) {
+                    appendFixedText("else")
+                }
+                else {
+                    for ((i, condition) in entry.getConditions().withIndex()) {
+                        if (i > 0) appendFixedText(",")
+                        appendExpression(condition.toExpression(subject))
+                    }
+                }
+                appendFixedText("->")
+
+                appendExpression(branchExpression)
+                appendFixedText("\n")
+            }
+
+            appendFixedText("}")
+        }
+
+        element.replace(whenExpression)
     }
 }

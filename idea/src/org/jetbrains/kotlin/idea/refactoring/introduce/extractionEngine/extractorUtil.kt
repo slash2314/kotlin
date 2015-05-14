@@ -515,8 +515,7 @@ fun ExtractionGeneratorConfiguration.generateDeclaration(
                     lastExpression to null
                 }
 
-        val returnExpression = descriptor.controlFlow.outputValueBoxer.getReturnExpression(getReturnArguments(defaultExpression), psiFactory)
-        if (returnExpression == null) return
+        val returnExpression = descriptor.controlFlow.outputValueBoxer.getReturnExpression(getReturnArguments(defaultExpression), psiFactory) ?: return
 
         when(generatorOptions.target) {
             ExtractionTarget.LAZY_PROPERTY, ExtractionTarget.FAKE_LAMBDALIKE_FUNCTION -> {
@@ -575,10 +574,10 @@ fun ExtractionGeneratorConfiguration.generateDeclaration(
         anchorCandidates.add(targetSibling)
 
         val marginalCandidate = if (insertBefore) {
-            anchorCandidates.minBy { it.getTextRange().getStartOffset() }!!
+            anchorCandidates.minBy { it.startOffset }!!
         }
         else {
-            anchorCandidates.maxBy { it.getTextRange().getStartOffset() }!!
+            anchorCandidates.maxBy { it.startOffset }!!
         }
 
         // Ascend to the level of targetSibling

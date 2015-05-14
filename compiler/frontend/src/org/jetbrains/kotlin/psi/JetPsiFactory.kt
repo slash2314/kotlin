@@ -17,22 +17,23 @@
 package org.jetbrains.kotlin.psi
 
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.LocalTimeCounter
-import org.jetbrains.kotlin.resolve.ImportPath
-import org.jetbrains.kotlin.lexer.JetKeywordToken
+import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.idea.JetFileType
+import org.jetbrains.kotlin.lexer.JetKeywordToken
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.JetPsiFactory.CallableBuilder.Target
-import com.intellij.openapi.util.Key
+import org.jetbrains.kotlin.resolve.ImportPath
 import java.io.PrintWriter
 import java.io.StringWriter
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.psi.PsiComment
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.analyzer.ModuleInfo
 
 public fun JetPsiFactory(project: Project?): JetPsiFactory = JetPsiFactory(project!!)
 public fun JetPsiFactory(contextElement: JetElement): JetPsiFactory = JetPsiFactory(contextElement.getProject())
@@ -62,7 +63,8 @@ public class JetPsiFactory(private val project: Project) {
     }
 
     public fun createExpression(text: String): JetExpression {
-        return createProperty("val x = $text").getInitializer()!!
+        //TODO: '\n' below if important - some strange code indenting problems appear without it
+        return createProperty("val x =\n$text").getInitializer() ?: error("Failed to create expression from text: '$text'")
     }
 
     public fun createClassLiteral(className: String): JetClassLiteralExpression =
@@ -328,13 +330,6 @@ public class JetPsiFactory(private val project: Project) {
         return createExpression("$" + fieldName)
     }
 
-    public fun createBinaryExpression(lhs: JetExpression, op: String, rhs: JetExpression): JetBinaryExpression {
-        val expression = createExpression("a $op b") as JetBinaryExpression
-        expression.getLeft().replace(lhs)
-        expression.getRight().replace(rhs)
-        return expression
-    }
-
     public fun createTypeCodeFragment(text: String, context: PsiElement?): JetTypeCodeFragment {
         return JetTypeCodeFragment(project, "fragment.kt", text, context)
     }
@@ -347,16 +342,11 @@ public class JetPsiFactory(private val project: Project) {
         return JetBlockCodeFragment(project, "fragment.kt", text, null, context)
     }
 
-    public fun createReturn(text: String): JetReturnExpression {
-        return createExpression("return $text") as JetReturnExpression
-    }
-
-    public fun createReturn(expression: JetExpression?): JetReturnExpression {
-        return createReturn(JetPsiUtil.getText(expression))
-    }
-
-    public fun createIf(condition: JetExpression?, thenExpr: JetExpression?, elseExpr: JetExpression?): JetIfExpression {
-        return createExpression(JetPsiUnparsingUtils.toIf(condition, thenExpr, elseExpr)) as JetIfExpression
+    public fun createIf(condition: JetExpression, thenExpr: JetExpression, elseExpr: JetExpression?): JetIfExpression {
+        return (if (elseExpr != null)
+            createExpressionByPattern("if ($0) $1 else $2", condition, thenExpr, elseExpr) as JetIfExpression
+        else
+            createExpressionByPattern("if ($0) $1", condition, thenExpr)) as JetIfExpression
     }
 
     public fun createArgumentWithName(name: String?, argumentExpression: JetExpression): JetValueArgument {
@@ -375,142 +365,6 @@ public class JetPsiFactory(private val project: Project) {
     public fun createConstructorDelegationCall(text: String): JetConstructorDelegationCall {
         val colonOrEmpty = if (text.isEmpty()) "" else ": "
         return createClass("class A { constructor()$colonOrEmpty$text {}").getSecondaryConstructors().first().getDelegationCall()
-    }
-
-    public inner class IfChainBuilder() {
-        private val sb = StringBuilder()
-        private var first = true
-        private var frozen = false
-
-        public fun ifBranch(conditionText: String, expressionText: String): IfChainBuilder {
-            if (first) {
-                first = false
-            }
-            else {
-                sb.append("else ")
-            }
-
-            sb.append("if (").append(conditionText).append(") ").append(expressionText).append("\n")
-            return this
-        }
-
-        public fun ifBranch(condition: JetExpression, expression: JetExpression): IfChainBuilder {
-            return ifBranch(condition.getText()!!, expression.getText()!!)
-        }
-
-        public fun elseBranch(expressionText: String): IfChainBuilder {
-            sb.append("else ").append(expressionText)
-            return this
-        }
-
-        public fun elseBranch(expression: JetExpression?): IfChainBuilder {
-            return elseBranch(JetPsiUtil.getText(expression))
-        }
-
-        public fun toExpression(): JetIfExpression {
-            if (!frozen) {
-                frozen = true
-            }
-            return createExpression(sb.toString()) as JetIfExpression
-        }
-    }
-
-    public inner class WhenBuilder(subjectText: String?) {
-        private val sb = StringBuilder("when ")
-        private var frozen = false
-        private var inCondition = false
-
-        public fun condition(text: String): WhenBuilder {
-            assert(!frozen)
-
-            if (!inCondition) {
-                inCondition = true
-            }
-            else {
-                sb.append(", ")
-            }
-            sb.append(text)
-
-            return this
-        }
-
-        public fun condition(expression: JetExpression?): WhenBuilder {
-            return condition(JetPsiUtil.getText(expression))
-        }
-
-        public fun pattern(typeReferenceText: String, negated: Boolean): WhenBuilder {
-            return condition((if (negated) "!is" else "is") + " " + typeReferenceText)
-        }
-
-        public fun pattern(typeReference: JetTypeReference?, negated: Boolean): WhenBuilder {
-            return pattern(JetPsiUtil.getText(typeReference), negated)
-        }
-
-        public fun range(argumentText: String, negated: Boolean): WhenBuilder {
-            return condition((if (negated) "!in" else "in") + " " + argumentText)
-        }
-
-        public fun range(argument: JetExpression?, negated: Boolean): WhenBuilder {
-            return range(JetPsiUtil.getText(argument), negated)
-        }
-
-        public fun branchExpression(expressionText: String): WhenBuilder {
-            assert(!frozen)
-            assert(inCondition)
-
-            inCondition = false
-            sb.append(" -> ").append(expressionText).append("\n")
-
-            return this
-        }
-
-        public fun branchExpression(expression: JetExpression?): WhenBuilder {
-            return branchExpression(JetPsiUtil.getText(expression))
-        }
-
-        public fun entry(entryText: String): WhenBuilder {
-            assert(!frozen)
-            assert(!inCondition)
-
-            sb.append(entryText).append("\n")
-
-            return this
-        }
-
-        public fun entry(whenEntry: JetWhenEntry?): WhenBuilder {
-            return entry(JetPsiUtil.getText(whenEntry))
-        }
-
-        public fun elseEntry(text: String): WhenBuilder {
-            return entry("else -> $text")
-        }
-
-        public fun elseEntry(expression: JetExpression?): WhenBuilder {
-            return elseEntry(JetPsiUtil.getText(expression))
-        }
-
-        public fun toExpression(): JetWhenExpression {
-            if (!frozen) {
-                sb.append("}")
-                frozen = true
-            }
-            return createExpression(sb.toString()) as JetWhenExpression
-        }
-
-        init {
-            if (subjectText != null) {
-                sb.append("(").append(subjectText).append(") ")
-            }
-            sb.append("{\n")
-        }
-    }
-
-    public fun WhenBuilder(): WhenBuilder {
-        return WhenBuilder(null: String?)
-    }
-
-    public fun WhenBuilder(subject: JetExpression?): WhenBuilder {
-        return WhenBuilder(subject?.getText())
     }
 
     public class CallableBuilder(private val target: Target) {

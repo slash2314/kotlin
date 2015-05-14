@@ -16,104 +16,56 @@
 
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations
 
-import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.lexer.JetTokens
-import org.jetbrains.kotlin.psi.JetPsiUnparsingUtils.*
-import org.jetbrains.kotlin.psi.psiUtil.*
-import java.util.ArrayList
-import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.PsiWhiteSpace
-import java.util.Collections
-import com.intellij.util.containers.ContainerUtil
-import org.jetbrains.kotlin.idea.util.psi.patternMatching.toRange
 import org.jetbrains.kotlin.idea.util.psi.patternMatching.matches
+import org.jetbrains.kotlin.lexer.JetTokens
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.replaced
 
-public val TRANSFORM_WITHOUT_CHECK: String = "Expression must be checked before applying transformation"
-
-fun JetWhenCondition.toExpressionText(subject: JetExpression?): String {
-    return when (this) {
+fun JetWhenCondition.toExpression(subject: JetExpression?): JetExpression {
+    val factory = JetPsiFactory(this)
+    when (this) {
         is JetWhenConditionIsPattern -> {
             val op = if (isNegated()) "!is" else "is"
-            toBinaryExpression(subject, op, getTypeReference())
+            return factory.createExpressionByPattern("$0 $op $1", subject ?: "_", getTypeReference() ?: "")
         }
+
         is JetWhenConditionInRange -> {
-            toBinaryExpression(subject, getOperationReference()!!.getText()!!, getRangeExpression())
+            val op = getOperationReference().getText()
+            return factory.createExpressionByPattern("$0 $op $1", subject ?: "_", getRangeExpression() ?: "")
         }
+
         is JetWhenConditionWithExpression -> {
-            val conditionExpression = getExpression()
-            if (subject != null) {
-                toBinaryExpression(parenthesizeIfNeeded(subject), "==", parenthesizeIfNeeded(conditionExpression))
+            return if (subject != null) {
+                factory.createExpressionByPattern("$0 == $1", subject, getExpression() ?: "")
             }
             else {
-                JetPsiUtil.getText(this)
+                getExpression()
             }
         }
-        else -> {
-            assert(this is JetWhenConditionWithExpression, TRANSFORM_WITHOUT_CHECK)
 
-            val conditionExpression = (this as JetWhenConditionWithExpression).getExpression()
-            if (subject != null) {
-                toBinaryExpression(parenthesizeIfNeeded(subject), "==", parenthesizeIfNeeded(conditionExpression))
-            }
-            else {
-                JetPsiUtil.getText(this)
-            }
-        }
+        else -> throw IllegalArgumentException("Unknown JetWhenCondition type: $this")
     }
 }
 
-public fun JetWhenExpression.canFlatten(): Boolean {
-    val subject = getSubjectExpression()
-    if (subject != null && subject !is JetSimpleNameExpression) return false
-
-    if (!JetPsiUtil.checkWhenExpressionHasSingleElse(this)) return false
-
-    val elseBranch = getElseExpression()
-    if (elseBranch !is JetWhenExpression) return false
-
-    return JetPsiUtil.checkWhenExpressionHasSingleElse(elseBranch) && subject.matches(elseBranch.getSubjectExpression())
-}
-
-fun JetWhenExpression.getSubjectCandidate(): JetExpression?  {
-    fun JetExpression?.getWhenConditionSubjectCandidate(): JetExpression? {
-        return when(this) {
-            is JetIsExpression -> getLeftHandSide()
-            is JetBinaryExpression -> {
-                val lhs = getLeft()
-                val op = getOperationToken()
-                when (op) {
-                    JetTokens.IN_KEYWORD, JetTokens.NOT_IN -> lhs
-                    JetTokens.EQEQ -> {
-                        if (lhs is JetSimpleNameExpression)
-                            lhs
-                        else
-                            getRight()
-                    }
-                    else -> null
-                }
-
-            }
-            else -> null
-        }
-    }
-
+public fun JetWhenExpression.getSubjectToIntroduce(): JetExpression?  {
     if (getSubjectExpression() != null) return null
 
     var lastCandidate: JetExpression? = null
     for (entry in getEntries()) {
         val conditions = entry.getConditions()
-        if (!entry.isElse() && conditions.size == 0) return null
+        if (!entry.isElse() && conditions.isEmpty()) return null
 
         for (condition in conditions) {
             if (condition !is JetWhenConditionWithExpression) return null
 
-            val currCandidate = condition.getExpression().getWhenConditionSubjectCandidate()
-            if (currCandidate !is JetSimpleNameExpression) return null
+            val candidate = condition.getExpression()?.getWhenConditionSubjectCandidate() as? JetSimpleNameExpression ?: return null
 
             if (lastCandidate == null) {
-                lastCandidate = currCandidate
+                lastCandidate = candidate
             }
-            else if (!lastCandidate.matches(currCandidate)) return null
+            else if (!lastCandidate.matches(candidate)) {
+                return null
+            }
 
         }
     }
@@ -121,247 +73,75 @@ fun JetWhenExpression.getSubjectCandidate(): JetExpression?  {
     return lastCandidate
 }
 
-public fun JetWhenExpression.canIntroduceSubject(): Boolean {
-    return getSubjectCandidate() != null
-}
+private fun JetExpression?.getWhenConditionSubjectCandidate(): JetExpression? {
+    return when(this) {
+        is JetIsExpression -> getLeftHandSide()
 
-public fun JetWhenExpression.canEliminateSubject(): Boolean {
-    return getSubjectExpression() is JetSimpleNameExpression
-}
+        is JetBinaryExpression -> {
+            val lhs = getLeft()
+            val op = getOperationToken()
+            when (op) {
+                JetTokens.IN_KEYWORD, JetTokens.NOT_IN -> lhs
+                JetTokens.EQEQ -> lhs as? JetSimpleNameExpression ?: getRight()
+                else -> null
+            }
 
-public fun JetWhenExpression.flatten(): JetWhenExpression {
-    val subjectExpression = getSubjectExpression()
-    val elseBranch = getElseExpression()
+        }
 
-    assert(elseBranch is JetWhenExpression, TRANSFORM_WITHOUT_CHECK)
-
-    val nestedWhenExpression = (elseBranch as JetWhenExpression)
-
-    val outerEntries = getEntries()
-    val innerEntries = nestedWhenExpression.getEntries()
-    val builder = JetPsiFactory(this).WhenBuilder(subjectExpression)
-    for (entry in outerEntries) {
-        if (entry.isElse())
-            continue
-
-        builder.entry(entry)
+        else -> null
     }
-    for (entry in innerEntries) {
-        builder.entry(entry)
-    }
-
-    return replaced(builder.toExpression())
 }
 
 public fun JetWhenExpression.introduceSubject(): JetWhenExpression {
-    val subject = getSubjectCandidate()!!
+    val subject = getSubjectToIntroduce()!!
 
-    val builder = JetPsiFactory(this).WhenBuilder(subject)
-    for (entry in getEntries()) {
-        val branchExpression = entry.getExpression()
-        if (entry.isElse()) {
-            builder.elseEntry(branchExpression)
-            continue
-        }
+    val whenExpression = JetPsiFactory(this).buildExpression {
+        appendFixedText("when(").appendExpression(subject).appendFixedText("){\n")
 
-        for (condition in entry.getConditions()) {
-            assert(condition is JetWhenConditionWithExpression, TRANSFORM_WITHOUT_CHECK)
+        for (entry in getEntries()) {
+            val branchExpression = entry.getExpression()
 
-            val conditionExpression = ((condition as JetWhenConditionWithExpression)).getExpression()
-            when (conditionExpression)  {
-                is JetIsExpression -> {
-                    builder.pattern(conditionExpression.getTypeReference(), conditionExpression.isNegated())
-                }
-                is JetBinaryExpression -> {
-                    val lhs = conditionExpression.getLeft()
-                    val rhs = conditionExpression.getRight()
-                    val op = conditionExpression.getOperationToken()
-                    when (op) {
-                        JetTokens.IN_KEYWORD -> builder.range(rhs, false)
-                        JetTokens.NOT_IN -> builder.range(rhs, true)
-                        JetTokens.EQEQ -> builder.condition(if (subject.matches(lhs)) rhs else lhs)
-                        else -> assert(false, TRANSFORM_WITHOUT_CHECK)
-                    }
-                }
-                else -> assert(false, TRANSFORM_WITHOUT_CHECK)
-            }
-
-        }
-        builder.branchExpression(branchExpression)
-    }
-
-    return replaced(builder.toExpression())
-}
-
-public fun JetWhenExpression.eliminateSubject(): JetWhenExpression {
-    val subject = getSubjectExpression()!!
-
-    val builder = JetPsiFactory(this).WhenBuilder()
-    for (entry in getEntries()) {
-        val branchExpression = entry.getExpression()
-
-        if (entry.isElse()) {
-            builder.elseEntry(branchExpression)
-            continue
-        }
-        for (condition in entry.getConditions()) {
-            builder.condition(condition.toExpressionText(subject))
-        }
-
-        builder.branchExpression(branchExpression)
-    }
-
-    return replaced(builder.toExpression())
-}
-
-public fun JetIfExpression.canTransformToWhen(): Boolean = getThen() != null
-
-public fun JetWhenExpression.canTransformToIf(): Boolean = !getEntries().isEmpty()
-
-public fun JetIfExpression.transformToWhen() {
-    fun JetExpression.splitToOrBranches(): List<JetExpression> {
-        val branches = ArrayList<JetExpression>()
-        accept(
-                object : JetVisitorVoid() {
-                    public override fun visitBinaryExpression(expression: JetBinaryExpression) {
-                        if (expression.getOperationToken() == JetTokens.OROR) {
-                            expression.getLeft()?.accept(this)
-                            expression.getRight()?.accept(this)
-                        }
-                        else {
-                            visitExpression(expression)
-                        }
-                    }
-
-                    public override fun visitParenthesizedExpression(expression: JetParenthesizedExpression) {
-                        expression.getExpression()?.accept(this)
-                    }
-
-                    public override fun visitExpression(expression: JetExpression) {
-                        branches.add(expression)
-                    }
-                }
-        )
-        return branches
-    }
-
-    fun branchIterator(ifExpression: JetIfExpression): Iterator<JetIfExpression> = object: Iterator<JetIfExpression> {
-        private var expression: JetIfExpression? = ifExpression
-
-        override fun next(): JetIfExpression {
-            val current = expression!!
-            expression = current.getElse()?.let { next -> if (next is JetIfExpression) next else null }
-            return current
-        }
-
-        override fun hasNext(): Boolean = expression != null
-    }
-
-    val builder = JetPsiFactory(this).WhenBuilder()
-    branchIterator(this).forEach { ifExpression ->
-        ifExpression.getCondition()?.let { condition ->
-            val orBranches = condition.splitToOrBranches()
-            if (orBranches.isEmpty()) {
-                builder.condition("")
+            if (entry.isElse()) {
+                appendFixedText("else")
             }
             else {
-                orBranches.forEach { branch -> builder.condition(branch) }
+                for ((i, condition) in entry.getConditions().withIndex()) {
+                    if (i > 0) appendFixedText(",")
+
+                    val conditionExpression = (condition as JetWhenConditionWithExpression).getExpression()
+                    when (conditionExpression)  {
+                        is JetIsExpression -> {
+                            if (conditionExpression.isNegated()) {
+                                appendFixedText("!")
+                            }
+                            appendFixedText("is ")
+                            appendNonFormattedText(conditionExpression.getTypeReference()?.getText() ?: "")
+                        }
+
+                        is JetBinaryExpression -> {
+                            val lhs = conditionExpression.getLeft()
+                            val rhs = conditionExpression.getRight()
+                            val op = conditionExpression.getOperationToken()
+                            when (op) {
+                                JetTokens.IN_KEYWORD -> appendFixedText("in ").appendExpression(rhs)
+                                JetTokens.NOT_IN -> appendFixedText("!in ").appendExpression(rhs)
+                                JetTokens.EQEQ -> appendExpression(if (subject.matches(lhs)) rhs else lhs)
+                                else -> throw IllegalStateException()
+                            }
+                        }
+
+                        else -> throw IllegalStateException()
+                    }
+                }
             }
+            appendFixedText("->")
+
+            appendExpression(branchExpression)
+            appendFixedText("\n")
         }
 
-        builder.branchExpression(ifExpression.getThen())
+        appendFixedText("}")
+    } as JetWhenExpression
 
-        ifExpression.getElse()?.let { elseBranch ->
-            if (elseBranch !is JetIfExpression) {
-                builder.elseEntry(elseBranch)
-            }
-        }
-    }
-
-    val whenExpression = builder.toExpression().let { whenExpression ->
-        if (whenExpression.canIntroduceSubject()) whenExpression.introduceSubject() else whenExpression
-    }
-    replace(whenExpression)
-}
-
-public fun JetWhenExpression.transformToIf() {
-    fun combineWhenConditions(conditions: Array<JetWhenCondition>, subject: JetExpression?): String {
-        return when (conditions.size) {
-            0 -> ""
-            1 -> conditions[0].toExpressionText(subject)
-            else -> {
-                conditions
-                        .map { condition -> parenthesizeTextIfNeeded(condition.toExpressionText(subject)) }
-                        .makeString(separator = " || ")
-            }
-        }
-    }
-
-    val builder = JetPsiFactory(this).IfChainBuilder()
-
-    for (entry in getEntries()) {
-        val branch = entry.getExpression()
-        if (entry.isElse()) {
-            builder.elseBranch(branch)
-        }
-        else {
-            val branchConditionText = combineWhenConditions(entry.getConditions(), getSubjectExpression())
-            builder.ifBranch(branchConditionText, JetPsiUtil.getText(branch))
-        }
-    }
-
-    replace(builder.toExpression())
-}
-
-public fun JetWhenExpression.canMergeWithNext(): Boolean {
-    fun checkConditions(e1: JetWhenEntry, e2: JetWhenEntry): Boolean =
-            e1.getConditions().toList().toRange().matches(e2.getConditions().toList().toRange())
-
-    fun JetWhenEntry.declarationNames(): Set<String> =
-            getExpression()?.blockExpressionsOrSingle()
-                    ?.filter { it is JetNamedDeclaration }
-                    ?.map { decl -> decl.getName() }
-                    ?.filterNotNull()?.toSet() ?: Collections.emptySet<String>()
-
-    fun checkBodies(e1: JetWhenEntry, e2: JetWhenEntry): Boolean {
-        if (ContainerUtil.intersects(e1.declarationNames(), e2.declarationNames())) return false
-
-        return when (e1.getExpression()?.outermostLastBlockElement()) {
-            is JetReturnExpression, is JetThrowExpression, is JetBreakExpression, is JetContinueExpression -> false
-            else -> true
-        }
-    }
-
-    val sibling = PsiTreeUtil.skipSiblingsForward(this, javaClass<PsiWhiteSpace>())
-
-    if (sibling !is JetWhenExpression) return false
-    if (!getSubjectExpression().matches(sibling.getSubjectExpression())) return false
-
-    val entries1 = getEntries()
-    val entries2 = sibling.getEntries()
-    return entries1.size == entries2.size && (entries1 zip entries2).all { pair ->
-        checkConditions(pair.first, pair.second) && checkBodies(pair.first, pair.second)
-    }
-}
-
-public fun JetWhenExpression.mergeWithNext() {
-    fun JetExpression?.mergeWith(that: JetExpression?): JetExpression? = when {
-        this == null -> that
-        that == null -> this
-        else -> {
-            val block = if (this is JetBlockExpression) this else replaced(wrapInBlock())
-            for (element in that.blockExpressionsOrSingle()) {
-                val expression = block.appendElement(element)
-                block.addBefore(JetPsiFactory(this).createNewLine(), expression)
-            }
-            block
-        }
-    }
-
-    val sibling = PsiTreeUtil.skipSiblingsForward(this, javaClass<PsiWhiteSpace>()) as JetWhenExpression
-    for ((entry1, entry2) in getEntries() zip sibling.getEntries()) {
-        entry1.getExpression() mergeWith entry2.getExpression()
-    }
-
-    getParent()?.deleteChildRange(getNextSibling(), sibling)
+    return replaced(whenExpression)
 }

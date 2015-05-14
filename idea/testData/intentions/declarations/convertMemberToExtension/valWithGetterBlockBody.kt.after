@@ -1,7 +1,5 @@
 class Owner {
 }
 
-val Owner.p: Int
-    get() {
-        return 1
-    }
+val Owner.<caret>p: Int
+    get() { return 1}

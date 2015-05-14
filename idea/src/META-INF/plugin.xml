@@ -506,7 +506,12 @@
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.SpecifyTypeExplicitlyAction</className>
+      <className>org.jetbrains.kotlin.idea.intentions.SpecifyTypeExplicitlyIntention</className>
+      <category>Kotlin</category>
+    </intentionAction>
+
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.RemoveExplicitTypeIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
@@ -531,27 +536,27 @@
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.attributeCallReplacements.ReplaceGetIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ReplaceGetIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.attributeCallReplacements.ReplaceContainsIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ReplaceContainsIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.attributeCallReplacements.ReplaceInvokeIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ReplaceInvokeIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.attributeCallReplacements.ReplaceUnaryPrefixIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ReplaceCallWithUnaryOperatorIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.attributeCallReplacements.ReplaceBinaryInfixIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ReplaceCallWithBinaryOperatorIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
@@ -676,7 +681,7 @@
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.RemoveExplicitTypeArguments</className>
+      <className>org.jetbrains.kotlin.idea.intentions.RemoveExplicitTypeArgumentsIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
@@ -711,7 +716,7 @@
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.declarations.ConvertMemberToExtension</className>
+      <className>org.jetbrains.kotlin.idea.intentions.declarations.ConvertMemberToExtensionIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
@@ -776,12 +781,12 @@
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.ReplaceWithOperatorAssignIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.ReplaceWithOperatorAssignmentIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
     <intentionAction>
-      <className>org.jetbrains.kotlin.idea.intentions.ReplaceWithTraditionalAssignmentIntention</className>
+      <className>org.jetbrains.kotlin.idea.intentions.ReplaceWithOrdinaryAssignmentIntention</className>
       <category>Kotlin</category>
     </intentionAction>
 
@@ -870,21 +875,41 @@
       <category>Kotlin</category>
     </intentionAction>
 
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.ExplicitGetInspection"
-        displayName="Explicit 'get'"
-        groupName="Kotlin"
-        enabledByDefault="false"
-        level="WEAK WARNING"
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.ChangeVisibilityModifierIntention$Public</className>
+      <category>Kotlin</category>
+    </intentionAction>
+
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.ChangeVisibilityModifierIntention$Private</className>
+      <category>Kotlin</category>
+    </intentionAction>
+
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.ChangeVisibilityModifierIntention$Protected</className>
+      <category>Kotlin</category>
+    </intentionAction>
+
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.ChangeVisibilityModifierIntention$Internal</className>
+      <category>Kotlin</category>
+    </intentionAction>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.conventionNameCalls.ExplicitGetInspection"
+                     displayName="Explicit 'get'"
+                     groupName="Kotlin"
+                     enabledByDefault="false"
+                     level="WEAK WARNING"
         />
 
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.IfThenToElvisInspection"
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions.IfThenToElvisInspection"
         displayName="If-Then foldable to '?:'"
         groupName="Kotlin"
         enabledByDefault="true"
         level="WEAK WARNING"
         />
 
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.IfThenToSafeAccessInspection"
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions.IfThenToSafeAccessInspection"
         displayName="If-Then foldable to '?.'"
         groupName="Kotlin"
         enabledByDefault="true"
@@ -898,18 +923,32 @@
         level="WEAK WARNING"
         />
 
-      <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.RemoveExplicitTypeArgsInspection"
+      <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.RemoveExplicitTypeArgumentsInspection"
         displayName="Type arguments are unnecessary"
         groupName="Kotlin"
         enabledByDefault="true"
         level="WEAK WARNING"
         />
 
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.SimplifyBinaryNegationInspection"
-        displayName="Simplify Negated Binary Expression"
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.SimplifyNegatedBinaryExpressionInspection"
+        displayName="Simplify negated binary expression"
         groupName="Kotlin"
         enabledByDefault="true"
-        level="WARNING"
+        level="WEAK WARNING"
+        />
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.ReplaceWithOperatorAssignmentInspection"
+        displayName="Replace with operator-assignment"
+        groupName="Kotlin"
+        enabledByDefault="true"
+        level="WEAK WARNING"
+        />
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions.IntroduceWhenSubjectInspection"
+        displayName="Introduce argument to 'when'"
+        groupName="Kotlin"
+        enabledByDefault="true"
+        level="WEAK WARNING"
         />
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.UnusedSymbolInspection"

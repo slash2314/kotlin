@@ -3075,6 +3075,12 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("lastStatementIsComment.kt")
+            public void testLastStatementIsComment() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/lambdaSyntax/lastStatementIsComment.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("paranthesizedParameters.kt")
             public void testParanthesizedParameters() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/lambdaSyntax/paranthesizedParameters.kt");
@@ -3947,37 +3953,109 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
     @TestDataPath("$PROJECT_ROOT")
     @RunWith(JUnit3RunnerWithInners.class)
     public static class SupertypeInitialization extends AbstractQuickFixTest {
+        @TestMetadata("addImport.kt")
+        public void testAddImport() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addImport.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParameters.kt")
+        public void testAddParameters() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParameters.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParenthesis.kt")
+        public void testAddParenthesis() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParenthesis.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParenthesisDefaultParameters.kt")
+        public void testAddParenthesisDefaultParameters() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParenthesisDefaultParameters.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParenthesisEmptyConstructor.kt")
+        public void testAddParenthesisEmptyConstructor() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParenthesisEmptyConstructor.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParenthesisForLocalClass.kt")
+        public void testAddParenthesisForLocalClass() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParenthesisForLocalClass.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("addParenthesisForObjectExpression.kt")
+        public void testAddParenthesisForObjectExpression() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/addParenthesisForObjectExpression.kt");
+            doTest(fileName);
+        }
+
         public void testAllFilesPresentInSupertypeInitialization() throws Exception {
             JetTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/quickfix/supertypeInitialization"), Pattern.compile("^(\\w+)\\.kt$"), true);
         }
 
-        @TestMetadata("supertypeNotInitialized.kt")
-        public void testSupertypeNotInitialized() throws Exception {
-            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/supertypeNotInitialized.kt");
+        @TestMetadata("baseConstructorError.kt")
+        public void testBaseConstructorError() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/baseConstructorError.kt");
             doTest(fileName);
         }
 
-        @TestMetadata("supertypeNotInitializedDefaultParameters.kt")
-        public void testSupertypeNotInitializedDefaultParameters() throws Exception {
-            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/supertypeNotInitializedDefaultParameters.kt");
+        @TestMetadata("createConstructor.kt")
+        public void testCreateConstructor() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/createConstructor.kt");
             doTest(fileName);
         }
 
-        @TestMetadata("supertypeNotInitializedEmptyConstructor.kt")
-        public void testSupertypeNotInitializedEmptyConstructor() throws Exception {
-            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/supertypeNotInitializedEmptyConstructor.kt");
+        @TestMetadata("genericClass.kt")
+        public void testGenericClass() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/genericClass.kt");
             doTest(fileName);
         }
 
-        @TestMetadata("supertypeNotInitializedForLocalClass.kt")
-        public void testSupertypeNotInitializedForLocalClass() throws Exception {
-            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/supertypeNotInitializedForLocalClass.kt");
+        @TestMetadata("incompleteConstructor.kt")
+        public void testIncompleteConstructor() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/incompleteConstructor.kt");
             doTest(fileName);
         }
 
-        @TestMetadata("supertypeNotInitializedForObjectExpression.kt")
-        public void testSupertypeNotInitializedForObjectExpression() throws Exception {
-            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/supertypeNotInitializedForObjectExpression.kt");
+        @TestMetadata("keywordName.kt")
+        public void testKeywordName() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/keywordName.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("multipleConstructors.kt")
+        public void testMultipleConstructors() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/multipleConstructors.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("noAccessibleConstructors.kt")
+        public void testNoAccessibleConstructors() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/noAccessibleConstructors.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("noParameters.kt")
+        public void testNoParameters() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/noParameters.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("primaryConstructorInaccessible.kt")
+        public void testPrimaryConstructorInaccessible() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/primaryConstructorInaccessible.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("someParametersAlreadyExist.kt")
+        public void testSomeParametersAlreadyExist() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/supertypeInitialization/someParametersAlreadyExist.kt");
             doTest(fileName);
         }
     }

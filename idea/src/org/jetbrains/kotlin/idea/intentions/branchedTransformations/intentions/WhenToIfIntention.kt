@@ -17,15 +17,60 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.canTransformToIf
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.transformToIf
-import org.jetbrains.kotlin.psi.JetWhenExpression
+import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingRangeIntention
+import org.jetbrains.kotlin.idea.intentions.branchedTransformations.toExpression
+import org.jetbrains.kotlin.psi.*
 
-public class WhenToIfIntention : JetSelfTargetingOffsetIndependentIntention<JetWhenExpression>("when.to.if", javaClass()) {
-    override fun isApplicableTo(element: JetWhenExpression): Boolean = element.canTransformToIf()
+public class WhenToIfIntention : JetSelfTargetingRangeIntention<JetWhenExpression>(javaClass(), "Replace 'when' with 'if'") {
+    override fun applicabilityRange(element: JetWhenExpression): TextRange? {
+        val entries = element.getEntries()
+        if (entries.isEmpty()) return null
+        val lastEntry = entries.last()
+        if (entries.any { it != lastEntry && it.isElse() }) return null
+        return element.getWhenKeyword().getTextRange()
+    }
 
     override fun applyTo(element: JetWhenExpression, editor: Editor) {
-        element.transformToIf()
+        val factory = JetPsiFactory(element)
+        val ifExpression = factory.buildExpression {
+            for ((i, entry) in element.getEntries().withIndex()) {
+                if (i > 0) {
+                    appendFixedText("else ")
+                }
+                val branch = entry.getExpression()
+                if (entry.isElse()) {
+                    appendExpression(branch)
+                    appendFixedText("\n")
+                }
+                else {
+                    val condition = factory.combineWhenConditions(entry.getConditions(), element.getSubjectExpression())
+                    appendFixedText("if (")
+                    appendExpression(condition)
+                    appendFixedText(")")
+                    appendExpression(branch)
+                    appendFixedText("\n")
+                }
+            }
+        }
+
+        element.replace(ifExpression)
+    }
+
+    private fun JetPsiFactory.combineWhenConditions(conditions: Array<JetWhenCondition>, subject: JetExpression?): JetExpression? {
+        when (conditions.size()) {
+            0 -> return null
+
+            1 -> return conditions[0].toExpression(subject)
+
+            else -> {
+                return buildExpression {
+                    for ((i, condition) in conditions.withIndex()) {
+                        if (i > 0) appendFixedText("||")
+                        appendExpression(condition.toExpression(subject))
+                    }
+                }
+            }
+        }
     }
 }

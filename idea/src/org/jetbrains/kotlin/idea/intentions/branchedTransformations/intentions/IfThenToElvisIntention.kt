@@ -17,21 +17,25 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
+import org.jetbrains.kotlin.JetNodeTypes
+import org.jetbrains.kotlin.idea.inspections.IntentionBasedInspection
 import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.*
 import org.jetbrains.kotlin.lexer.JetTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.replaced
 
-public class IfThenToElvisIntention : JetSelfTargetingOffsetIndependentIntention<JetIfExpression>("if.then.to.elvis", javaClass()) {
+public class IfThenToElvisInspection : IntentionBasedInspection<JetIfExpression>(IfThenToElvisIntention())
+
+public class IfThenToElvisIntention : JetSelfTargetingOffsetIndependentIntention<JetIfExpression>(javaClass(), "Replace 'if' expression with elvis expression") {
 
     override fun isApplicableTo(element: JetIfExpression): Boolean {
-        val condition = element.getCondition()
-        val thenClause = element.getThen()
-        val elseClause = element.getElse()
-        if (thenClause == null || elseClause == null || condition !is JetBinaryExpression || !condition.comparesNonNullToNull()) return false
+        val condition = element.getCondition() as? JetBinaryExpression ?: return false
+        val thenClause = element.getThen() ?: return false
+        val elseClause = element.getElse() ?: return false
 
-        val expression = condition.getNonNullExpression()
-        if (expression == null || !expression.isStableVariable()) return false
+        val expression = condition.expressionComparedToNull() ?: return false
+        if (!expression.isStableVariable()) return false
 
         return when (condition.getOperationToken()) {
             JetTokens.EQEQ ->
@@ -47,6 +51,11 @@ public class IfThenToElvisIntention : JetSelfTargetingOffsetIndependentIntention
         }
     }
 
+    private fun JetExpression.isNotNullExpression(): Boolean {
+        val innerExpression = this.unwrapBlockOrParenthesis()
+        return innerExpression !is JetBlockExpression && innerExpression.getNode().getElementType() != JetNodeTypes.NULL
+    }
+
     override fun applyTo(element: JetIfExpression, editor: Editor) {
         val elvis = applyTo(element)
         elvis.inlineLeftSideIfApplicableWithPrompt(editor)
@@ -55,25 +64,19 @@ public class IfThenToElvisIntention : JetSelfTargetingOffsetIndependentIntention
     public fun applyTo(element: JetIfExpression): JetBinaryExpression {
         val condition = element.getCondition() as JetBinaryExpression
 
-        val thenClause = checkNotNull(element.getThen(), "The then clause cannot be null")
-        val elseClause = checkNotNull(element.getElse(), "The else clause cannot be null")
-        val thenExpression = checkNotNull(thenClause.extractExpressionIfSingle(), "Then clause must contain expression")
-        val elseExpression = checkNotNull(elseClause.extractExpressionIfSingle(), "Else clause must contain expression")
+        val thenClause = element.getThen()!!
+        val elseClause = element.getElse()!!
+        val thenExpression = thenClause.unwrapBlockOrParenthesis()
+        val elseExpression = elseClause.unwrapBlockOrParenthesis()
 
         val (left, right) =
                 when(condition.getOperationToken()) {
                     JetTokens.EQEQ -> Pair(elseExpression, thenExpression)
                     JetTokens.EXCLEQ -> Pair(thenExpression, elseExpression)
-                    else -> throw IllegalStateException("Operation token must be either null or not null")
+                    else -> throw IllegalArgumentException()
                 }
 
-        val resultingExprString = "${left.getText()} ?: ${right.getText()}"
-        val resultingExpression = JetPsiUtil.deparenthesize(element.replace(resultingExprString) as? JetExpression)
-
-        assert(resultingExpression is JetBinaryExpression) {
-               "Unexpected expression type: ${resultingExpression?.javaClass}, expected JetBinaryExpression, element = '${element.getText()}'"
-        }
-
-        return resultingExpression as JetBinaryExpression
+        val newExpr = element.replaced(JetPsiFactory(element).createExpressionByPattern("$0 ?: $1", left, right))
+        return JetPsiUtil.deparenthesize(newExpr) as JetBinaryExpression
     }
 }

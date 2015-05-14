@@ -17,13 +17,20 @@
 package org.jetbrains.kotlin.idea.intentions.declarations
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
+import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingRangeIntention
+import org.jetbrains.kotlin.idea.intentions.splitPropertyDeclaration
 import org.jetbrains.kotlin.psi.JetProperty
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
-public class SplitPropertyDeclarationIntention : JetSelfTargetingOffsetIndependentIntention<JetProperty>("split.property.declaration", javaClass()) {
-    override fun isApplicableTo(element: JetProperty): Boolean = DeclarationUtils.checkSplitProperty(element)
+public class SplitPropertyDeclarationIntention : JetSelfTargetingRangeIntention<JetProperty>(javaClass(), "Split property declaration") {
+    override fun applicabilityRange(element: JetProperty): TextRange? {
+        if (!element.isLocal()) return null
+        val initializer = element.getInitializer() ?: return null
+        return TextRange(element.startOffset, initializer.startOffset)
+    }
 
     override fun applyTo(element: JetProperty, editor: Editor) {
-        DeclarationUtils.splitPropertyDeclaration(element)
+        splitPropertyDeclaration(element)
     }
 }

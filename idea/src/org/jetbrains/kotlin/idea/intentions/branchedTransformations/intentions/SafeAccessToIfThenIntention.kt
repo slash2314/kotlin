@@ -17,29 +17,32 @@
 package org.jetbrains.kotlin.idea.intentions.branchedTransformations.intentions
 
 import com.intellij.openapi.editor.Editor
-import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingOffsetIndependentIntention
+import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.intentions.JetSelfTargetingRangeIntention
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.convertToIfNotNullExpression
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.introduceValueForCondition
 import org.jetbrains.kotlin.idea.intentions.branchedTransformations.isStableVariable
-import org.jetbrains.kotlin.idea.intentions.branchedTransformations.isStatement
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsStatement
 
-public class SafeAccessToIfThenIntention : JetSelfTargetingOffsetIndependentIntention<JetSafeQualifiedExpression>("safe.access.to.if.then", javaClass()) {
-    override fun isApplicableTo(element: JetSafeQualifiedExpression): Boolean = true
+public class SafeAccessToIfThenIntention : JetSelfTargetingRangeIntention<JetSafeQualifiedExpression>(javaClass(), "Replace safe access expression with 'if' expression") {
+    override fun applicabilityRange(element: JetSafeQualifiedExpression): TextRange? {
+        if (element.getSelectorExpression() == null) return null
+        return element.getOperationTokenNode().getTextRange()
+    }
 
     override fun applyTo(element: JetSafeQualifiedExpression, editor: Editor) {
-        val receiver = JetPsiUtil.deparenthesize(element.getReceiverExpression())!!
-        val selector = JetPsiUtil.deparenthesize(element.getSelectorExpression())
+        val receiver = JetPsiUtil.safeDeparenthesize(element.getReceiverExpression())
+        val selector = element.getSelectorExpression()!!
 
         val receiverIsStable = receiver.isStableVariable()
 
-        val receiverTemplate = if (receiver is JetBinaryExpression) "(%s)" else "%s"
-        val receiverAsString = receiverTemplate.format(receiver.getText())
         val psiFactory = JetPsiFactory(element)
-        val dotQualifiedExpression = psiFactory.createExpression("${receiverAsString}.${selector!!.getText()}")
+        val dotQualified = psiFactory.createExpressionByPattern("$0.$1", receiver, selector)
 
-        val elseClause = if (element.isStatement()) null else psiFactory.createExpression("null")
-        val ifExpression = element.convertToIfNotNullExpression(receiver, dotQualifiedExpression, elseClause)
+        val elseClause = if (element.isUsedAsStatement(element.analyze())) null else psiFactory.createExpression("null")
+        val ifExpression = element.convertToIfNotNullExpression(receiver, dotQualified, elseClause)
 
         if (!receiverIsStable) {
             val valueToExtract = (ifExpression.getThen() as JetDotQualifiedExpression).getReceiverExpression()

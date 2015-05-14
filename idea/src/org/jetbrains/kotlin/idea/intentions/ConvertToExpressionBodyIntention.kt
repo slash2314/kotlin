@@ -27,6 +27,8 @@ import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
 import org.jetbrains.kotlin.lexer.JetTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsStatement
 import org.jetbrains.kotlin.types.typeUtil.isSubtypeOf
@@ -70,21 +72,18 @@ public class ConvertToExpressionBodyIntention : JetSelfTargetingOffsetIndependen
             val typeRef = declaration.getTypeReference()!!
             val colon = declaration.getColon()!!
             if (editor != null) {
-                val range = TextRange(colon.getTextRange().getStartOffset(), typeRef.getTextRange().getEndOffset())
+                val range = TextRange(colon.startOffset, typeRef.endOffset)
                 editor.getSelectionModel().setSelection(range.getStartOffset(), range.getEndOffset())
                 editor.getCaretModel().moveToOffset(range.getEndOffset())
             }
             else {
-                (declaration : PsiElement).deleteChildRange(colon, typeRef)
+                (declaration as PsiElement).deleteChildRange(colon, typeRef)
             }
         }
     }
 
     private fun canOmitType(declaration: JetCallableDeclaration, expression: JetExpression): Boolean {
-        if (declaration.getModifierList()?.hasModifier(JetTokens.OVERRIDE_KEYWORD) ?: false) return true
-
-        val descriptor = declaration.resolveToDescriptor()
-        if ((descriptor as? DeclarationDescriptorWithVisibility)?.getVisibility()?.isPublicAPI() ?: false) return false
+        if (!declaration.canRemoveTypeSpecificationByVisibility()) return false
 
         // Workaround for anonymous objects and similar expressions without resolution scope
         // TODO: This should probably be fixed in front-end so that resolution scope is recorded for anonymous objects as well
@@ -92,7 +91,7 @@ public class ConvertToExpressionBodyIntention : JetSelfTargetingOffsetIndependen
                                  ?.getStatements()?.singleOrNull() as? JetExpression
                          ?: return false
 
-        val declaredType = (descriptor as? CallableDescriptor)?.getReturnType() ?: return false
+        val declaredType = (declaration.resolveToDescriptor() as? CallableDescriptor)?.getReturnType() ?: return false
         val scope = scopeExpression.analyze()[BindingContext.RESOLUTION_SCOPE, scopeExpression] ?: return false
         val expressionType = expression.analyzeInContext(scope).getType(expression) ?: return false
         return expressionType.isSubtypeOf(declaredType)
