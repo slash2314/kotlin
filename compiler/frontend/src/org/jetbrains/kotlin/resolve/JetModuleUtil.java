@@ -18,15 +18,12 @@ package org.jetbrains.kotlin.resolve;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
-import org.jetbrains.kotlin.descriptors.PackageViewDescriptor;
 import org.jetbrains.kotlin.descriptors.impl.SubpackagesScope;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.resolve.scopes.JetScope;
 
 public class JetModuleUtil {
     public static JetScope getSubpackagesOfRootScope(@NotNull ModuleDescriptor module) {
-        PackageViewDescriptor rootPackage = module.getPackage(FqName.ROOT);
-        assert rootPackage != null : "Couldn't find root package for " + module;
-        return new SubpackagesScope(rootPackage);
+        return new SubpackagesScope(module, FqName.ROOT);
     }
 }
