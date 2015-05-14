@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.resolve.ImportPath
 import org.jetbrains.kotlin.types.TypeSubstitutor
 
-public trait ModuleDescriptor : DeclarationDescriptor, PackageViewManager {
+public trait ModuleDescriptor : DeclarationDescriptor {
     override fun getContainingDeclaration(): DeclarationDescriptor? = null
 
     public val defaultImports: List<ImportPath>
@@ -42,6 +42,10 @@ public trait ModuleDescriptor : DeclarationDescriptor, PackageViewManager {
     override fun <R, D> accept(visitor: DeclarationDescriptorVisitor<R, D>, data: D): R {
         return visitor.visitModuleDeclaration(this, data)
     }
+
+    public fun getPackage(fqName: FqName): PackageViewDescriptor?
+
+    public fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName>
 }
 
 public trait PackageViewManager {
