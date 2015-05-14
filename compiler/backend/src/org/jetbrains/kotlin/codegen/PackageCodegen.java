@@ -279,13 +279,7 @@ public class PackageCodegen {
         List<PackageFragmentDescriptor> fragmentsOfThisModule = Lists.newArrayList();
         ContainerUtil.addIfNotNull(fragmentsOfThisModule, packageFragment);
         ContainerUtil.addIfNotNull(fragmentsOfThisModule, compiledPackageFragment);
-        PackageViewManagerImpl viewManager = new PackageViewManagerImpl(
-                (ModuleDescriptorImpl) state.getModule(),
-                LockBasedStorageManager.NO_LOCKS
-        );
-        //TODO_R: this is hack
-        PackageViewDescriptorImpl viewOnFragmentsOfThisModule =
-                new PackageViewDescriptorImpl(state.getModule(), fqName, fragmentsOfThisModule, viewManager);
+        PackageViewDescriptorImpl viewOnFragmentsOfThisModule = new PackageViewDescriptorImpl(state.getModule(), fqName, fragmentsOfThisModule);
         ProtoBuf.Package packageProto = serializer.packageProto(viewOnFragmentsOfThisModule).build();
 
         if (packageProto.getMemberCount() == 0) return;
