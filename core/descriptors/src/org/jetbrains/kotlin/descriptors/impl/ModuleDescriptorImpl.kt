@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.resolve.ImportPath
-import org.jetbrains.kotlin.storage.StorageManager
 import java.util.ArrayList
 import java.util.LinkedHashSet
 import kotlin.properties.Delegates
@@ -34,8 +33,7 @@ import kotlin.properties.Delegates
 public class ModuleDescriptorImpl(
         moduleName: Name,
         override val defaultImports: List<ImportPath>,
-        override val platformToKotlinClassMap: PlatformToKotlinClassMap,
-        private val storageManager: StorageManager
+        override val platformToKotlinClassMap: PlatformToKotlinClassMap
 ) : DeclarationDescriptorImpl(Annotations.EMPTY, moduleName), ModuleDescriptor {
 
     init {
@@ -43,6 +41,7 @@ public class ModuleDescriptorImpl(
             throw IllegalArgumentException("Module name must be special: $moduleName")
         }
     }
+
     private var isSealed = false
 
     /*
@@ -111,7 +110,7 @@ public class ModuleDescriptorImpl(
     override val builtIns: KotlinBuiltIns
         get() = KotlinBuiltIns.getInstance()
 
-    private val packageViewManager = PackageViewManagerImpl(this, storageManager)
+    public var packageViewManager: PackageViewManager = PackageViewManagerImpl(this)
 
     override fun getPackage(fqName: FqName): PackageViewDescriptor? {
         return packageViewManager.getPackage(fqName)
@@ -122,10 +121,10 @@ public class ModuleDescriptorImpl(
     }
 }
 
-class PackageViewManagerImpl(private val module: ModuleDescriptorImpl, private val storageManager: StorageManager) : PackageViewManager {
+class PackageViewManagerImpl(private val module: ModuleDescriptorImpl) : PackageViewManager {
     override fun getPackage(fqName: FqName): PackageViewDescriptor? {
         val fragments = module.packageFragmentProvider.getPackageFragments(fqName)
-        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, storageManager) else null
+        return if (!fragments.isEmpty()) PackageViewDescriptorImpl(module, fqName, fragments) else null
     }
 
     override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): Collection<FqName> {

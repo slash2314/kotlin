@@ -37,7 +37,6 @@ import org.jetbrains.kotlin.config.IncrementalCompilation;
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor;
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor;
 import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor;
-import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.descriptors.impl.PackageViewDescriptorImpl;
 import org.jetbrains.kotlin.diagnostics.DiagnosticUtils;
 import org.jetbrains.kotlin.load.java.JvmAbi;
@@ -57,7 +56,6 @@ import org.jetbrains.kotlin.serialization.deserialization.descriptors.Deserializ
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedPropertyDescriptor;
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedSimpleFunctionDescriptor;
 import org.jetbrains.kotlin.serialization.jvm.BitEncoding;
-import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.org.objectweb.asm.AnnotationVisitor;
 import org.jetbrains.org.objectweb.asm.MethodVisitor;
 import org.jetbrains.org.objectweb.asm.Type;
@@ -277,7 +275,7 @@ public class PackageCodegen {
         List<PackageFragmentDescriptor> fragmentsOfThisModule = Lists.newArrayList();
         ContainerUtil.addIfNotNull(fragmentsOfThisModule, packageFragment);
         ContainerUtil.addIfNotNull(fragmentsOfThisModule, compiledPackageFragment);
-        PackageViewDescriptorImpl viewOnFragmentsOfThisModule = new PackageViewDescriptorImpl((ModuleDescriptorImpl) state.getModule(), fqName, LockBasedStorageManager.NO_LOCKS);
+        PackageViewDescriptorImpl viewOnFragmentsOfThisModule = new PackageViewDescriptorImpl(state.getModule(), fqName, fragmentsOfThisModule);
         ProtoBuf.Package packageProto = serializer.packageProto(viewOnFragmentsOfThisModule).build();
 
         if (packageProto.getMemberCount() == 0) return;

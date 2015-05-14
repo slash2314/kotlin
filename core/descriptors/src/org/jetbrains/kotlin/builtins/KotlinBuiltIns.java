@@ -110,7 +110,7 @@ public class KotlinBuiltIns {
 
     private KotlinBuiltIns() {
         builtInsModule = new ModuleDescriptorImpl(
-                Name.special("<built-ins module>"), Collections.<ImportPath>emptyList(), PlatformToKotlinClassMap.EMPTY, LockBasedStorageManager.NO_LOCKS
+                Name.special("<built-ins module>"), Collections.<ImportPath>emptyList(), PlatformToKotlinClassMap.EMPTY
         );
 
         PackageFragmentProvider packageFragmentProvider = BuiltinsPackage.createBuiltInPackageFragmentProvider(

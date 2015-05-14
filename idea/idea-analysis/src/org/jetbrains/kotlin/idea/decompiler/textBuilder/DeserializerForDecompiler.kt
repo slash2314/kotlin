@@ -47,9 +47,9 @@ public fun DeserializerForDecompiler(classFile: VirtualFile): DeserializerForDec
 public class DeserializerForDecompiler(val packageDirectory: VirtualFile, val directoryPackageFqName: FqName) : ResolverForDecompiler {
 
     private val moduleDescriptor =
-            ModuleDescriptorImpl(Name.special("<module for building decompiled sources>"), listOf(), PlatformToKotlinClassMap.EMPTY, LockBasedStorageManager.NO_LOCKS)
+            ModuleDescriptorImpl(Name.special("<module for building decompiled sources>"), listOf(), PlatformToKotlinClassMap.EMPTY)
 
-    private fun createDummyModule(name: String) = ModuleDescriptorImpl(Name.special("<$name>"), listOf(), PlatformToKotlinClassMap.EMPTY, LockBasedStorageManager.NO_LOCKS)
+    private fun createDummyModule(name: String) = ModuleDescriptorImpl(Name.special("<$name>"), listOf(), PlatformToKotlinClassMap.EMPTY)
 
     override fun resolveTopLevelClass(classId: ClassId) = deserializationComponents.deserializeClass(classId)
 

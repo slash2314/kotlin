@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.resolve.DescriptorUtils;
 import org.jetbrains.kotlin.resolve.ImportPath;
 import org.jetbrains.kotlin.resolve.TopDownAnalysisParameters;
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory;
-import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -157,7 +156,7 @@ public enum TopDownAnalyzerFacadeForJVM {
     public static ModuleDescriptorImpl createJavaModule(@NotNull String name) {
         return new ModuleDescriptorImpl(Name.special(name),
                                         DEFAULT_IMPORTS,
-                                        JavaToKotlinClassMap.INSTANCE, LockBasedStorageManager.NO_LOCKS);
+                                        JavaToKotlinClassMap.INSTANCE);
     }
 
     @NotNull

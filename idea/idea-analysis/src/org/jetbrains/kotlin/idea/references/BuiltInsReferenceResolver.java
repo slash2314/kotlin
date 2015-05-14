@@ -49,7 +49,6 @@ import org.jetbrains.kotlin.renderer.DescriptorRenderer;
 import org.jetbrains.kotlin.resolve.*;
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory;
 import org.jetbrains.kotlin.resolve.scopes.JetScope;
-import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.kotlin.types.DynamicTypesSettings;
 import org.jetbrains.kotlin.utils.UtilsPackage;
 
@@ -99,8 +98,7 @@ public class BuiltInsReferenceResolver extends AbstractProjectComponent {
                 GlobalContextImpl globalContext = ContextPackage.GlobalContext();
 
                 ModuleDescriptorImpl module = new ModuleDescriptorImpl(
-                        Name.special("<built-ins resolver module>"), Collections.<ImportPath>emptyList(), PlatformToKotlinClassMap.EMPTY,
-                        LockBasedStorageManager.NO_LOCKS
+                        Name.special("<built-ins resolver module>"), Collections.<ImportPath>emptyList(), PlatformToKotlinClassMap.EMPTY
                 );
                 module.addDependencyOnModule(module);
                 module.seal();
