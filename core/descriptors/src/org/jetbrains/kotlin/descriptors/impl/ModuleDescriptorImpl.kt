@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.resolve.ImportPath
 import org.jetbrains.kotlin.resolve.scopes.JetScope
+import org.jetbrains.kotlin.resolve.scopes.LazyScopeAdapter
 import org.jetbrains.kotlin.storage.StorageManager
 import java.util.ArrayList
 import java.util.LinkedHashSet
@@ -146,8 +147,10 @@ private class LazyPackageViewWrapper(
     private val delegate: PackageViewDescriptor?
         get() = _delegate()
 
+    private val scope = LazyScopeAdapter(storageManager.createLazyValue { delegate?.getMemberScope() ?: JetScope.Empty })
+
     override fun getMemberScope(): JetScope {
-        return delegate?.getMemberScope() ?: JetScope.Empty
+        return scope
     }
 
     override fun getFragments(): MutableList<PackageFragmentDescriptor> {
