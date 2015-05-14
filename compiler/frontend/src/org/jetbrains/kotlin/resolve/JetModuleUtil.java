@@ -19,24 +19,14 @@ package org.jetbrains.kotlin.resolve;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor;
-import org.jetbrains.kotlin.descriptors.impl.PackageViewDescriptorImpl;
 import org.jetbrains.kotlin.descriptors.impl.SubpackagesScope;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.resolve.scopes.JetScope;
 
 public class JetModuleUtil {
     public static JetScope getSubpackagesOfRootScope(@NotNull ModuleDescriptor module) {
-        return getRootPackageScope(module, /* scopeIncludingMembers = */ false);
-    }
-
-    public static JetScope getImportsResolutionScope(ModuleDescriptor module, boolean includeRootPackageClasses) {
-        return getRootPackageScope(module, /* scopeIncludingMembers = */ includeRootPackageClasses);
-    }
-
-    private static JetScope getRootPackageScope(ModuleDescriptor module, boolean scopeIncludingMembers) {
         PackageViewDescriptor rootPackage = module.getPackage(FqName.ROOT);
         assert rootPackage != null : "Couldn't find root package for " + module;
-
-        return scopeIncludingMembers ? rootPackage.getMemberScope() : new SubpackagesScope((PackageViewDescriptorImpl) rootPackage);
+        return new SubpackagesScope(rootPackage);
     }
 }
