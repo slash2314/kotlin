@@ -16,7 +16,6 @@
 
 package org.jetbrains.kotlin.serialization
 
-import com.google.common.base.Predicates
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.cli.jvm.compiler.CliLightClassGenerationSupport
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
@@ -27,7 +26,6 @@ import org.jetbrains.kotlin.di.InjectorForTopDownAnalyzerForJvm
 import org.jetbrains.kotlin.jvm.compiler.LoadDescriptorUtil
 import org.jetbrains.kotlin.load.java.JvmAnnotationNames
 import org.jetbrains.kotlin.load.java.structure.reflect.classId
-import org.jetbrains.kotlin.resolve.TopDownAnalysisParameters
 import org.jetbrains.kotlin.resolve.jvm.TopDownAnalyzerFacadeForJVM
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory
 import org.jetbrains.kotlin.test.*
@@ -57,7 +55,6 @@ public abstract class AbstractLocalClassProtoTest : TestCaseWithTmpdir() {
         )
         val module = TopDownAnalyzerFacadeForJVM.createSealedJavaModule()
         val globalContext = GlobalContext()
-        val params = TopDownAnalysisParameters.create(false, false)
         val providerFactory = FileBasedDeclarationProviderFactory(globalContext.storageManager, emptyList())
 
         val injector = InjectorForTopDownAnalyzerForJvm(
