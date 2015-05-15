@@ -3096,6 +3096,12 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("commaSemicolonDelimiter.kt")
+            public void testCommaSemicolonDelimiter() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumDelimiter/commaSemicolonDelimiter.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("missedCommas.kt")
             public void testMissedCommas() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/testData/quickfix/migration/enumDelimiter/missedCommas.kt");
