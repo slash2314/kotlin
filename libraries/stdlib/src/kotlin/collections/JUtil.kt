@@ -38,7 +38,7 @@ private object EmptyList : List<Nothing>, Serializable {
         throw IndexOutOfBoundsException("fromIndex: $fromIndex, toIndex: $toIndex")
     }
 
-    private fun readResolve() : Any = EmptyList
+    private fun readResolve(): Any = EmptyList
 }
 
 private object EmptySet : Set<Nothing>, Serializable {
@@ -53,24 +53,32 @@ private object EmptySet : Set<Nothing>, Serializable {
 
     override fun iterator(): Iterator<Nothing> = EmptyIterator
 
-    private fun readResolve() : Any = EmptySet
+    private fun readResolve(): Any = EmptySet
 }
 
-/** Returns an empty read-only list. */
+/** Returns an empty read-only list.  The returned set is serializable. */
 public fun emptyList<T>(): List<T> = EmptyList
-/** Returns an empty read-only set. */
+/** Returns an empty read-only set.  The returned set is serializable. */
 public fun emptySet<T>(): Set<T> = EmptySet
 
 /** Returns a new read-only list of given elements */
-public fun listOf<T>(vararg values: T): List<T> = if (values.size() == 0) emptyList() else arrayListOf(*values)
+public fun listOf<T>(vararg values: T): List<T> = when (values.size()) {
+    0 -> emptyList()
+    1 -> listOf(values[0])
+    else -> arrayListOf(*values)
+}
 
-/** Returns an empty read-only list. */
+/** Returns an empty read-only list. The returned list is serializable. */
 public fun listOf<T>(): List<T> = emptyList()
 
 /** Returns a new read-only ordered set with the given elements. */
-public fun setOf<T>(vararg values: T): Set<T> = if (values.size() == 0) emptySet() else values.toCollection(LinkedHashSet<T>())
+public fun setOf<T>(vararg values: T): Set<T> = when (values.size()) {
+    0 -> emptySet()
+    1 -> setOf(values[0])
+    else -> values.toCollection(LinkedHashSet<T>())
+}
 
-/** Returns an empty read-only set. */
+/** Returns an empty read-only set. The returned set is serializable. */
 public fun setOf<T>(): Set<T> = emptySet()
 
 /** Returns a new [LinkedList] with the given elements. */
