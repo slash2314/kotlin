@@ -16,7 +16,9 @@
 
 package org.jetbrains.kotlin.maven;
 
+import com.intellij.util.ArrayUtil;
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments;
@@ -25,7 +27,9 @@ import org.jetbrains.kotlin.utils.LibraryUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Converts Kotlin to JavaScript code
@@ -36,6 +40,8 @@ import java.util.List;
  * @noinspection UnusedDeclaration
  */
 public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArguments> {
+
+    protected static final Set<String> jsOutputFiles = new HashSet<String>();
 
     /**
      * The output JS file name
@@ -52,15 +58,32 @@ public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArgument
      */
     private String metaFile;
 
-        @Override
+    /**
+     * Flags enables or disable source map generation
+     * @parameter default-value="false"
+     */
+    private boolean sourceMap;
+
+    @Override
     protected void configureSpecificCompilerArguments(@NotNull K2JSCompilerArguments arguments) throws MojoExecutionException {
         arguments.outputFile = outputFile;
         arguments.noStdlib = true;
         arguments.metaInfo = metaFile;
 
         List<String> libraries = getKotlinJavascriptLibraryFiles();
-        LOG.info("libraryFiles: " + libraries);
-        arguments.libraryFiles = libraries.toArray(new String[0]);
+        LOG.debug("libraryFiles: " + libraries);
+        arguments.libraryFiles = ArrayUtil.toStringArray(libraries);
+
+        arguments.sourceMap = sourceMap;
+
+        synchronized (jsOutputFiles) {
+            if (outputFile != null) {
+                jsOutputFiles.add(new File(outputFile).getParent());
+            }
+            if (metaFile != null) {
+                jsOutputFiles.add(new File(metaFile).getParent());
+            }
+        }
     }
 
     /**
@@ -71,7 +94,7 @@ public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArgument
     private List<String> getKotlinJavascriptLibraryFiles() {
         List<String> libraries = new ArrayList<String>();
 
-        for(Artifact artifact : project.getArtifacts()) {
+        for (Artifact artifact : project.getArtifacts()) {
             if (artifact.getScope().equals(Artifact.SCOPE_COMPILE)) {
                 File file = artifact.getFile();
                 if (LibraryUtils.isKotlinJavascriptLibrary(file)) {
@@ -80,6 +103,17 @@ public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArgument
                 else {
                     LOG.warn("artifact " + artifact + " is not a Kotlin Javascript Library");
                 }
+            }
+        }
+
+        List<String> outputFiles;
+        synchronized (jsOutputFiles) {
+            outputFiles = new ArrayList<String>(jsOutputFiles);
+        }
+
+        for (String file : outputFiles) {
+            if (new File(file).exists()) {
+                libraries.add(file);
             }
         }
 
