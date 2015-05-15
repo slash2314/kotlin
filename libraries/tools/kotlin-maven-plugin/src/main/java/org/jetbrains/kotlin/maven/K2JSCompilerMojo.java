@@ -54,10 +54,10 @@ public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArgument
     private String outputFile;
 
     /**
-     * The output metafile name
+     * Flags enables or disables metafile generation
      */
-    @Parameter(defaultValue = "${project.build.directory}/js/${project.artifactId}.meta.js")
-    private String metaFile;
+    @Parameter(defaultValue = "true")
+    private boolean metaFile;
 
     /**
      * Flags enables or disable source map generation
@@ -69,7 +69,7 @@ public class K2JSCompilerMojo extends KotlinCompileMojoBase<K2JSCompilerArgument
     protected void configureSpecificCompilerArguments(@NotNull K2JSCompilerArguments arguments) throws MojoExecutionException {
         arguments.outputFile = outputFile;
         arguments.noStdlib = true;
-        arguments.metaInfo = metaFile;
+        arguments.metaInfo = metaInfo;
 
         List<String> libraries = getKotlinJavascriptLibraryFiles();
         LOG.debug("libraryFiles: " + libraries);

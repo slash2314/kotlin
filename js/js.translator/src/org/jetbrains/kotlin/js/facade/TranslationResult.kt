@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.backend.common.output.OutputFileCollection
 import org.jetbrains.kotlin.backend.common.output.SimpleOutputFile
 import org.jetbrains.kotlin.backend.common.output.SimpleOutputFileCollection
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.js.JavaScript
 import org.jetbrains.kotlin.js.config.Config
 import org.jetbrains.kotlin.js.sourceMap.JsSourceGenerationVisitor
 import org.jetbrains.kotlin.js.sourceMap.SourceMap3Builder
@@ -32,6 +33,7 @@ import org.jetbrains.kotlin.js.sourceMap.SourceMapBuilder
 import org.jetbrains.kotlin.psi.JetFile
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 import org.jetbrains.kotlin.serialization.js.KotlinJavascriptSerializationUtil
+import org.jetbrains.kotlin.utils.KotlinJavascriptMetadataUtils
 import org.jetbrains.kotlin.utils.fileUtils.readTextOrEmpty
 import java.io.File
 import java.util.ArrayList
@@ -71,11 +73,11 @@ public abstract class TranslationResult protected (public val diagnostics: Diagn
             val jsFile = SimpleOutputFile(sourceFiles, outputFile.getName(), prefix + code + postfix)
             val outputFiles = arrayListOf(jsFile)
 
-            config.getMetaInfo()?.let {
-                val metaFile = File(it)
+            if (config.isMetaInfo()) {
+                val metaFileName = outputFile.getName().substringBeforeLast(JavaScript.DOT_EXTENSION) + KotlinJavascriptMetadataUtils.META_JS_SUFFIX
                 val metaFileContent = KotlinJavascriptSerializationUtil.metadataAsString(config.getModuleId(), moduleDescriptor)
-                val sourceFilesForMetaFile = ArrayList<File>(sourceFiles)
-                val jsMetaFile = SimpleOutputFile(sourceFilesForMetaFile, metaFile.getName(), metaFileContent)
+                val sourceFilesForMetaFile = ArrayList(sourceFiles)
+                val jsMetaFile = SimpleOutputFile(sourceFilesForMetaFile, metaFileName, metaFileContent)
                 outputFiles.add(jsMetaFile)
             }
 
