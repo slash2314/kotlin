@@ -133,10 +133,16 @@ JetFile: enumEntries.kt
       ENUM_ENTRY
         OBJECT_DECLARATION_NAME
           PsiElement(IDENTIFIER)('Ann')
-      PsiErrorElement:Expecting an enum entry or member declaration
-        PsiElement(LPAR)('(')
-      PsiErrorElement:Expecting an enum entry or member declaration
-        PsiElement(RPAR)(')')
+        INITIALIZER_LIST
+          DELEGATOR_SUPER_CALL
+            CONSTRUCTOR_CALLEE
+              TYPE_REFERENCE
+                USER_TYPE
+                  ENUM_ENTRY_SUPERCLASS_REFERENCE_EXPRESSION
+                    <empty list>
+            VALUE_ARGUMENT_LIST
+              PsiElement(LPAR)('(')
+              PsiElement(RPAR)(')')
       PsiWhiteSpace(' ')
       ENUM_ENTRY
         OBJECT_DECLARATION_NAME
