@@ -22,6 +22,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.analyzer.*
 import org.jetbrains.kotlin.cfg.JetFlowInformationProvider
+import org.jetbrains.kotlin.context.GlobalContextImpl
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
@@ -44,6 +45,7 @@ import org.jetbrains.kotlin.types.TypeUtils
 import java.util.Collections
 
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getDataFlowInfo
+import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
 public abstract class ElementResolver protected(
@@ -376,8 +378,10 @@ public abstract class ElementResolver protected(
     }
 
     private fun createBodyResolver(resolveSession: ResolveSession, trace: BindingTrace, file: JetFile, statementFilter: StatementFilter): BodyResolver {
-        val bodyResolve = InjectorForBodyResolve(file.getProject(), createParameters(resolveSession), trace,
-                                                 resolveSession.getModuleDescriptor(), getAdditionalCheckerProvider(file), statementFilter)
+        val bodyResolve = InjectorForBodyResolve(
+                file.getProject(), GlobalContextImpl(resolveSession.getStorageManager() as LockBasedStorageManager, resolveSession.getExceptionTracker()),
+                trace, resolveSession.getModuleDescriptor(), getAdditionalCheckerProvider(file), statementFilter
+        )
         return bodyResolve.getBodyResolver()
     }
 
@@ -461,12 +465,6 @@ public abstract class ElementResolver protected(
             private val topDownAnalysisParameters: TopDownAnalysisParameters,
             private val declaringScopes: Function<in JetDeclaration, JetScope>
     ) : BodiesResolveContext {
-
-        override val storageManager: StorageManager
-            get() = topDownAnalysisParameters.getStorageManager()
-
-        override val exceptionTracker: ExceptionTracker
-            get() = topDownAnalysisParameters.getExceptionTracker()
 
         override fun getFiles(): Collection<JetFile> = setOf()
 
