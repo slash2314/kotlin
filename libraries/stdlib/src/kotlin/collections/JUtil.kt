@@ -56,29 +56,29 @@ private object EmptySet : Set<Nothing>, Serializable {
     private fun readResolve(): Any = EmptySet
 }
 
-/** Returns an empty read-only list.  The returned set is serializable. */
+/** Returns an empty read-only list.  The returned list is serializable (JVM). */
 public fun emptyList<T>(): List<T> = EmptyList
-/** Returns an empty read-only set.  The returned set is serializable. */
+/** Returns an empty read-only set.  The returned set is serializable (JVM). */
 public fun emptySet<T>(): Set<T> = EmptySet
 
-/** Returns a new read-only list of given elements */
+/** Returns a new read-only list of given elements.  The returned list is serializable (JVM). */
 public fun listOf<T>(vararg values: T): List<T> = when (values.size()) {
     0 -> emptyList()
     1 -> listOf(values[0])
     else -> arrayListOf(*values)
 }
 
-/** Returns an empty read-only list. The returned list is serializable. */
+/** Returns an empty read-only list.  The returned list is serializable (JVM). */
 public fun listOf<T>(): List<T> = emptyList()
 
-/** Returns a new read-only ordered set with the given elements. */
+/** Returns a new read-only ordered set with the given elements.  The returned set is serializable (JVM). */
 public fun setOf<T>(vararg values: T): Set<T> = when (values.size()) {
     0 -> emptySet()
     1 -> setOf(values[0])
     else -> values.toCollection(LinkedHashSet<T>())
 }
 
-/** Returns an empty read-only set. The returned set is serializable. */
+/** Returns an empty read-only set.  The returned set is serializable (JVM). */
 public fun setOf<T>(): Set<T> = emptySet()
 
 /** Returns a new [LinkedList] with the given elements. */

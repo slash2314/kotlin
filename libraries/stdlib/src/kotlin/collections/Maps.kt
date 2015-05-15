@@ -21,13 +21,15 @@ private object EmptyMap : Map<Any, Nothing>, Serializable {
     private fun readResolve(): Any = EmptyMap
 }
 
-/** Returns an empty read-only map of specified type. The returned map is serializable. */
+/** Returns an empty read-only map of specified type. The returned map is serializable (JVM). */
 public fun emptyMap<K, V>(): Map<K, V> = EmptyMap as Map<K, V>
 
 /**
  * Returns a new read-only map with the specified contents, given as a list of pairs
  * where the first value is the key and the second is the value. If multiple pairs have
  * the same key, the resulting map will contain the value from the last of those pairs.
+ *
+ * The returned map is serializable (JVM).
  */
 public fun mapOf<K, V>(vararg values: Pair<K, V>): Map<K, V> = when (values.size()) {
     0 -> emptyMap()
@@ -35,7 +37,7 @@ public fun mapOf<K, V>(vararg values: Pair<K, V>): Map<K, V> = when (values.size
     else -> linkedMapOf(*values)
 }
 
-/** Returns an empty read-only map */
+/** Returns an empty read-only map. The returned map is serializable (JVM). */
 public fun mapOf<K, V>(): Map<K, V> = emptyMap()
 
 /**
