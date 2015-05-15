@@ -26,6 +26,7 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.VirtualFileSystem;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import kotlin.KotlinPackage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.backend.common.output.OutputFileCollection;
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.psi.JetFile;
 import org.jetbrains.kotlin.psi.JetPsiFactory;
 import org.jetbrains.kotlin.resolve.lazy.KotlinTestWithEnvironment;
 import org.jetbrains.kotlin.test.JetTestUtils;
+import org.jetbrains.kotlin.utils.KotlinJavascriptMetadataUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -155,16 +157,33 @@ public abstract class BasicTest extends KotlinTestWithEnvironment {
             @NotNull String moduleName,
             @Nullable List<String> libraries
     ) throws Exception {
+        generateJavaScriptFiles(files, testName, mainCallParameters, ecmaVersions, moduleName, libraries, Collections.<String>emptyList());
+    }
+
+    protected void generateJavaScriptFiles(
+            @NotNull List<String> files,
+            @NotNull String testName,
+            @NotNull MainCallParameters mainCallParameters,
+            @NotNull Iterable<EcmaVersion> ecmaVersions,
+            @NotNull String moduleName,
+            @Nullable List<String> libraries,
+            @NotNull List<String> dependencies
+    ) throws Exception {
         Project project = getProject();
         List<String> allFiles = withAdditionalKotlinFiles(files);
         List<JetFile> jetFiles = createJetFileList(project, allFiles, null);
 
         for (EcmaVersion version : ecmaVersions) {
+            addDependencies(testName, libraries, version, dependencies);
             Config config = createConfig(getProject(), moduleName, version, libraries);
             File outputFile = new File(getOutputFilePath(testName, version));
 
             translateFiles(jetFiles, outputFile, mainCallParameters, config);
         }
+    }
+
+    protected String getModuleDirectoryName(String dirName, String moduleName) {
+        return dirName + File.separator + moduleName;
     }
 
     protected void translateFiles(
@@ -203,9 +222,8 @@ public abstract class BasicTest extends KotlinTestWithEnvironment {
         return false;
     }
 
-    @Nullable
-    protected String getMetaFileOutputPath(@NotNull String moduleId) {
-        return null;
+    protected boolean shouldGenerateMetaInfo() {
+        return false;
     }
 
     protected void processJsProgram(@NotNull JsProgram program) throws Exception { }
@@ -292,7 +310,7 @@ public abstract class BasicTest extends KotlinTestWithEnvironment {
                 .sourceMap(shouldGenerateSourceMap())
                 .inlineEnabled(IS_INLINE_ENABLED)
                 .isUnitTestConfig(shouldBeTranslateAsUnitTestClass())
-                .metaFileOutputPath(getMetaFileOutputPath(moduleId))
+                .metaInfo(shouldGenerateMetaInfo())
                 .build();
     }
 
@@ -316,6 +334,18 @@ public abstract class BasicTest extends KotlinTestWithEnvironment {
         List<String> result = Lists.newArrayList(files);
         result.addAll(additionalKotlinFiles());
         return result;
+    }
+
+    private void addDependencies(String testName, List<String> libraries, EcmaVersion version, List<String> dependencies) {
+        String dirName = KotlinPackage.substringBeforeLast(testName, "/", testName);
+        for(String dependencyName : dependencies) {
+            libraries.add(getMetaFileOutputPath(getModuleDirectoryName(dirName, dependencyName), version));
+        }
+    }
+
+    private String getMetaFileOutputPath(String moduleDirectoryName, EcmaVersion version) {
+        String outputFilePath = getOutputFilePath(moduleDirectoryName, version);
+        return KotlinPackage.substringBeforeLast(outputFilePath, JavaScript.DOT_EXTENSION, outputFilePath) + KotlinJavascriptMetadataUtils.META_JS_SUFFIX;
     }
 
     @NotNull
