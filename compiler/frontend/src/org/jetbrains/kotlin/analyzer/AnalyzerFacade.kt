@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import java.util.ArrayList
 import org.jetbrains.kotlin.psi.JetFile
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.kotlin.context.ProjectContext
 import kotlin.properties.Delegates
 
 public trait ResolverForModule {
@@ -117,8 +118,7 @@ public trait ModuleInfo {
 //TODO: (module refactoring) extract project context
 public trait AnalyzerFacade<A : ResolverForModule, in P : PlatformAnalysisParameters> {
     public fun <M : ModuleInfo> setupResolverForProject(
-            globalContext: GlobalContext,
-            project: Project,
+            projectContext: ProjectContext,
             modules: Collection<M>,
             modulesContent: (M) -> ModuleContent,
             platformParameters: P,

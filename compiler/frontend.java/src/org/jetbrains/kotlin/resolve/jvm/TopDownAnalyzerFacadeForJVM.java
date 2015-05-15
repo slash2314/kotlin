@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.analyzer.AnalysisResult;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.context.GlobalContext;
+import org.jetbrains.kotlin.context.ModuleContext;
 import org.jetbrains.kotlin.descriptors.ClassDescriptor;
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
@@ -83,11 +83,9 @@ public enum TopDownAnalyzerFacadeForJVM {
 
     @NotNull
     public static AnalysisResult analyzeFilesWithJavaIntegrationWithCustomContext(
-            @NotNull Project project,
-            @NotNull GlobalContext globalContext,
+            @NotNull ModuleContext moduleContext,
             @NotNull Collection<JetFile> files,
             @NotNull BindingTrace trace,
-            @NotNull ModuleDescriptorImpl module,
             @Nullable List<String> moduleIds,
             @Nullable IncrementalCacheProvider incrementalCacheProvider
     ) {
