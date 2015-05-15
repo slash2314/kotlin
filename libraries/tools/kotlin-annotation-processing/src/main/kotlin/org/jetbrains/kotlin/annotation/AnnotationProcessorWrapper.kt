@@ -30,11 +30,11 @@ public class AnnotationProcessorStub : AbstractProcessor() {
     override fun process(annotations: Set<TypeElement>?, roundEnv: RoundEnvironment?) = true
 }
 
-abstract class AnnotatedElementDescriptor(val classFqName: String)
+abstract class AnnotatedElementDescriptor(public val classFqName: String)
 
 data class AnnotatedClassDescriptor(classFqName: String) : AnnotatedElementDescriptor(classFqName)
-data class AnnotatedMethodDescriptor(classFqName: String, val methodName: String) : AnnotatedElementDescriptor(classFqName)
-data class AnnotatedFieldDescriptor(classFqName: String, val fieldName: String) : AnnotatedElementDescriptor(classFqName)
+data class AnnotatedMethodDescriptor(classFqName: String, public val methodName: String) : AnnotatedElementDescriptor(classFqName)
+data class AnnotatedFieldDescriptor(classFqName: String, public val fieldName: String) : AnnotatedElementDescriptor(classFqName)
 
 public abstract class AnnotationProcessorWrapper(private val processorFqName: String) : Processor {
 
