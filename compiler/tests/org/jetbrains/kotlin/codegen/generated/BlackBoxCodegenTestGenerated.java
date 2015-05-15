@@ -2373,6 +2373,12 @@ public class BlackBoxCodegenTestGenerated extends AbstractBlackBoxCodegenTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("kt5232.kt")
+            public void testKt5232() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/defaultArguments/function/kt5232.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("memberFunctionManyArgs.kt")
             public void testMemberFunctionManyArgs() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/defaultArguments/function/memberFunctionManyArgs.kt");
@@ -4438,6 +4444,12 @@ public class BlackBoxCodegenTestGenerated extends AbstractBlackBoxCodegenTest {
         @TestMetadata("kt3584.kt")
         public void testKt3584() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/localClasses/kt3584.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("kt4174.kt")
+        public void testKt4174() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/localClasses/kt4174.kt");
             doTest(fileName);
         }
 
@@ -6850,6 +6862,18 @@ public class BlackBoxCodegenTestGenerated extends AbstractBlackBoxCodegenTest {
         @TestMetadata("kt3500.kt")
         public void testKt3500() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/traits/kt3500.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("kt3579.kt")
+        public void testKt3579() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/traits/kt3579.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("kt3579_2.kt")
+        public void testKt3579_2() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("compiler/testData/codegen/box/traits/kt3579_2.kt");
             doTest(fileName);
         }
 

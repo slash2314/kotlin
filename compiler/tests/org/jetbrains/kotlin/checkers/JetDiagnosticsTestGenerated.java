@@ -181,6 +181,12 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
             doTest(fileName);
         }
 
+        @TestMetadata("DeprecatedTraitKeyword.kt")
+        public void testDeprecatedTraitKeyword() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/DeprecatedTraitKeyword.kt");
+            doTest(fileName);
+        }
+
         @TestMetadata("DiamondFunction.kt")
         public void testDiamondFunction() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/DiamondFunction.kt");
@@ -3103,6 +3109,21 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
                     String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/declarationChecks/multiDeclarations/SingleDeclForLoop.kt");
                     doTest(fileName);
                 }
+            }
+        }
+
+        @TestMetadata("compiler/testData/diagnostics/tests/defaultArguments")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class DefaultArguments extends AbstractJetDiagnosticsTest {
+            public void testAllFilesPresentInDefaultArguments() throws Exception {
+                JetTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/diagnostics/tests/defaultArguments"), Pattern.compile("^(.+)\\.kt$"), true);
+            }
+
+            @TestMetadata("kt5232.kt")
+            public void testKt5232() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/defaultArguments/kt5232.kt");
+                doTest(fileName);
             }
         }
 
