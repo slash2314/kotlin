@@ -334,5 +334,8 @@ public class QuickFixRegistrar {
 
         QuickFixes.factories.put(ENUM_ENTRY_USES_DEPRECATED_OR_NO_DELIMITER, DeprecatedEnumEntryDelimiterSyntaxFix.Companion);
         QuickFixes.factories.put(ENUM_ENTRY_USES_DEPRECATED_OR_NO_DELIMITER, DeprecatedEnumEntryDelimiterSyntaxFix.Companion.createWholeProjectFixFactory());
+
+        QuickFixes.factories.put(FUNCTION_EXPRESSION_WITH_NAME, RemoveNameFromFunctionExpressionFix.Companion);
+        QuickFixes.factories.put(FUNCTION_EXPRESSION_WITH_NAME, RemoveNameFromFunctionExpressionFix.Companion.createWholeProjectFixFactory());
     }
 }
