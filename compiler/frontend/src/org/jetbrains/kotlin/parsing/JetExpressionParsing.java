@@ -887,8 +887,7 @@ public class JetExpressionParsing extends AbstractJetParsing {
             advance(); // ELSE_KEYWORD
 
             if (!at(ARROW)) {
-                errorUntil("Expecting '->'", TokenSet.create(ARROW,
-                                                             RBRACE, EOL_OR_SEMICOLON));
+                errorUntil("Expecting '->'", TokenSet.create(ARROW, LBRACE, RBRACE, EOL_OR_SEMICOLON));
             }
 
             if (at(ARROW)) {
@@ -900,6 +899,9 @@ public class JetExpressionParsing extends AbstractJetParsing {
                 else {
                     parseExpressionPreferringBlocks();
                 }
+            }
+            else if (at(LBRACE)) { // no arrow, probably it's simply missing
+                parseExpressionPreferringBlocks();
             }
             else if (!atSet(WHEN_CONDITION_RECOVERY_SET)) {
                 errorAndAdvance("Expecting '->'");
@@ -1554,7 +1556,7 @@ public class JetExpressionParsing extends AbstractJetParsing {
             PsiBuilder.Marker catchBlock = mark();
             advance(); // CATCH_KEYWORD
 
-            TokenSet recoverySet = TokenSet.create(LBRACE, FINALLY_KEYWORD, CATCH_KEYWORD);
+            TokenSet recoverySet = TokenSet.create(LBRACE, RBRACE, FINALLY_KEYWORD, CATCH_KEYWORD);
             if (atSet(recoverySet)) {
                 error("Expecting exception variable declaration");
             }

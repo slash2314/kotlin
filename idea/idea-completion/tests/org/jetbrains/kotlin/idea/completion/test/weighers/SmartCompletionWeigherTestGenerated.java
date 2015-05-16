@@ -167,6 +167,12 @@ public class SmartCompletionWeigherTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("NameSimilarityForVararg.kt")
+    public void testNameSimilarityForVararg() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/weighers/smart/NameSimilarityForVararg.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("NameSimilarityInImplicitlyTypedVarInitializer.kt")
     public void testNameSimilarityInImplicitlyTypedVarInitializer() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/weighers/smart/NameSimilarityInImplicitlyTypedVarInitializer.kt");
@@ -188,6 +194,18 @@ public class SmartCompletionWeigherTestGenerated extends AbstractSmartCompletion
     @TestMetadata("NullableExpected.kt")
     public void testNullableExpected() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/weighers/smart/NullableExpected.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("ReturnValue1.kt")
+    public void testReturnValue1() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/weighers/smart/ReturnValue1.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("ReturnValue2.kt")
+    public void testReturnValue2() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/weighers/smart/ReturnValue2.kt");
         doTest(fileName);
     }
 

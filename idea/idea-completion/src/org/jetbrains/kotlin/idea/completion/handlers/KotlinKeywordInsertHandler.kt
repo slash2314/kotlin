@@ -21,7 +21,7 @@ import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.LookupElement
 import org.jetbrains.kotlin.lexer.JetTokens.*
 
-public object KotlinKeywordInsertHandler : InsertHandler<LookupElement> {
+object KotlinKeywordInsertHandler : InsertHandler<LookupElement> {
     private val NO_SPACE_AFTER = listOf(THIS_KEYWORD,
                                         SUPER_KEYWORD,
                                         FOR_KEYWORD,
@@ -39,7 +39,7 @@ public object KotlinKeywordInsertHandler : InsertHandler<LookupElement> {
                                         FILE_KEYWORD,
                                         CATCH_KEYWORD,
                                         FINALLY_KEYWORD,
-                                        DYNAMIC_KEYWORD).map { it.getValue() }
+                                        DYNAMIC_KEYWORD).map { it.getValue() } + "companion object"
 
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
         val keyword = item.getLookupString()

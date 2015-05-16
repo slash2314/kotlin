@@ -19,21 +19,20 @@ package org.jetbrains.kotlin.idea.completion
 import com.intellij.codeInsight.completion.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.patterns.CharPattern
 import com.intellij.patterns.ElementPattern
-import com.intellij.patterns.PatternCondition
 import com.intellij.patterns.StandardPatterns
 import com.intellij.psi.PsiCompiledElement
 import com.intellij.psi.PsiElement
+import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.ProcessingContext
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.caches.resolve.ResolutionFacade
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
 import org.jetbrains.kotlin.idea.codeInsight.ReferenceVariantsHelper
+import org.jetbrains.kotlin.idea.completion.smart.LambdaItems
 import org.jetbrains.kotlin.idea.completion.smart.SmartCompletion
 import org.jetbrains.kotlin.idea.core.KotlinIndicesHelper
 import org.jetbrains.kotlin.idea.core.comparePossiblyOverridingDescriptors
@@ -50,7 +49,9 @@ import org.jetbrains.kotlin.psi.psiUtil.parents
 import org.jetbrains.kotlin.psi.psiUtil.prevLeaf
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getDataFlowInfo
+import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
 import org.jetbrains.kotlin.resolve.calls.smartcasts.SmartCastUtils
+import org.jetbrains.kotlin.resolve.calls.util.DelegatingCall
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindExclude
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
@@ -127,27 +128,35 @@ abstract class CompletionSessionBase(protected val configuration: CompletionSess
 
     protected val referenceVariantsHelper: ReferenceVariantsHelper = ReferenceVariantsHelper(bindingContext) { isVisibleDescriptor(it) }
 
+    protected val receiversData: ReferenceVariantsHelper.ReceiversData? = reference?.let { referenceVariantsHelper.getReferenceVariantsReceivers(it.expression) }
+
     protected val lookupElementFactory: LookupElementFactory = run {
-        val receiverTypes = if (reference != null) {
-            val expression = reference.expression
-            val (receivers, callType) = referenceVariantsHelper.getReferenceVariantsReceivers(expression)
+        if (receiversData != null) {
             val dataFlowInfo = bindingContext.getDataFlowInfo(expression)
-            var receiverTypes = receivers.flatMap {
+
+            var receiverTypes = receiversData.receivers.flatMap {
                 SmartCastUtils.getSmartCastVariantsWithLessSpecificExcluded(it, bindingContext, moduleDescriptor, dataFlowInfo)
             }
-            if (callType == CallType.SAFE) {
+
+            if (receiversData.callType == CallType.SAFE) {
                 receiverTypes = receiverTypes.map { it.makeNotNullable() }
             }
-            receiverTypes
+
+            LookupElementFactory(resolutionFacade, receiverTypes)
         }
         else {
-            listOf()
+            LookupElementFactory(resolutionFacade, emptyList())
         }
-        LookupElementFactory(receiverTypes)
     }
 
-    protected val collector: LookupElementsCollector = LookupElementsCollector(
-            prefixMatcher, parameters, resolutionFacade, lookupElementFactory, inDescriptor, expression?.getParent() is JetSimpleNameStringTemplateEntry)
+    private val collectorContext = if (expression?.getParent() is JetSimpleNameStringTemplateEntry)
+        LookupElementsCollector.Context.STRING_TEMPLATE_AFTER_DOLLAR
+    else if (receiversData?.callType == CallType.INFIX)
+        LookupElementsCollector.Context.INFIX_CALL
+    else
+        LookupElementsCollector.Context.NORMAL
+
+    protected val collector: LookupElementsCollector = LookupElementsCollector(prefixMatcher, parameters, resolutionFacade, lookupElementFactory, inDescriptor, collectorContext)
 
     protected val project: Project = position.getProject()
 
@@ -390,8 +399,16 @@ class SmartCompletionSession(configuration: CompletionSessionConfiguration, para
     private val DESCRIPTOR_KIND_MASK = DescriptorKindFilter.VALUES exclude SamConstructorDescriptorKindExclude
 
     override fun doComplete() {
+        if (NamedParametersCompletion.isOnlyNamedParameterExpected(position)) {
+            NamedParametersCompletion.complete(position, collector, bindingContext)
+            return
+        }
+
         if (expression != null) {
             val mapper = ToFromOriginalFileMapper(parameters.getOriginalFile() as JetFile, position.getContainingFile() as JetFile, parameters.getOffset())
+
+            addFunctionLiteralArgumentCompletions()
+
             val completion = SmartCompletion(expression, resolutionFacade, moduleDescriptor,
                                              bindingContext, { isVisibleDescriptor(it) }, inDescriptor, prefixMatcher, originalSearchScope,
                                              mapper, lookupElementFactory)
@@ -418,6 +435,39 @@ class SmartCompletionSession(configuration: CompletionSessionConfiguration, para
                     result.inheritanceSearcher?.search({ prefixMatcher.prefixMatches(it) }) {
                         collector.addElement(it)
                         flushToResultSet()
+                    }
+                }
+            }
+        }
+    }
+
+    // special completion for outside parenthesis lambda argument
+    private fun addFunctionLiteralArgumentCompletions() {
+        if (reference != null) {
+            val receiverData = ReferenceVariantsHelper.getExplicitReceiverData(reference.expression)
+            if (receiverData != null && receiverData.second == CallType.INFIX) {
+                val call = receiverData.first.getCall(bindingContext)
+                if (call != null && call.getFunctionLiteralArguments().isEmpty()) {
+                    val dummyArgument = object : FunctionLiteralArgument {
+                        override fun getFunctionLiteral() = throw UnsupportedOperationException()
+                        override fun getArgumentExpression() = throw UnsupportedOperationException()
+                        override fun getArgumentName(): JetValueArgumentName? = null
+                        override fun isNamed() = false
+                        override fun asElement() = throw UnsupportedOperationException()
+                        override fun getSpreadElement(): LeafPsiElement? = null
+                        override fun isExternal() = false
+                    }
+                    val dummyArguments = call!!.getValueArguments() + listOf(dummyArgument)
+                    val dummyCall = object : DelegatingCall(call) {
+                        override fun getValueArguments() = dummyArguments
+                        override fun getFunctionLiteralArguments() = listOf(dummyArgument)
+                        override fun getValueArgumentList() = throw UnsupportedOperationException()
+                    }
+
+                    val expectedInfos = ExpectedInfos(bindingContext, resolutionFacade, moduleDescriptor, true)
+                            .calculateForArgument(dummyCall, dummyArgument)
+                    if (expectedInfos != null) {
+                        collector.addElements(LambdaItems.collect(expectedInfos))
                     }
                 }
             }

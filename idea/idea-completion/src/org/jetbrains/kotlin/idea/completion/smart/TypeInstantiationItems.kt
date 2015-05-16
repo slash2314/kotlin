@@ -122,7 +122,7 @@ class TypeInstantiationItems(
             typeArgs: List<TypeProjection>,
             tail: Tail?
     ): LookupElement? {
-        var lookupElement = lookupElementFactory.createLookupElement(classifier, resolutionFacade, bindingContext, false)
+        var lookupElement = lookupElementFactory.createLookupElement(classifier, bindingContext, false)
 
         if (DescriptorUtils.isNonCompanionObject(classifier)) {
             return lookupElement.addTail(tail)
@@ -147,7 +147,7 @@ class TypeInstantiationItems(
         // drop "in" and "out" from type arguments - they cannot be used in constructor call
         val typeArgsToUse = typeArgs.map { TypeProjectionImpl(Variance.INVARIANT, it.getType()) }
 
-        var itemText = lookupString + DescriptorRenderer.SHORT_NAMES_IN_TYPES.renderTypeArguments(typeArgsToUse)
+        var itemText = lookupString + IdeDescriptorRenderers.SOURCE_CODE_SHORT_NAMES_IN_TYPES.renderTypeArguments(typeArgsToUse)
         var signatureText: String? = null
 
         val insertHandler: InsertHandler<LookupElement>
@@ -252,7 +252,7 @@ class TypeInstantiationItems(
             val samConstructor = scope.getFunctions(`class`.getName())
                                          .filterIsInstance<SamConstructorDescriptor>()
                                          .singleOrNull() ?: return
-            val lookupElement = lookupElementFactory.createLookupElement(samConstructor, resolutionFacade, bindingContext, false)
+            val lookupElement = lookupElementFactory.createLookupElement(samConstructor, bindingContext, false)
                     .assignSmartCompletionPriority(SmartCompletionItemPriority.INSTANTIATION)
                     .addTail(tail)
             collection.add(lookupElement)

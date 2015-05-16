@@ -19,6 +19,8 @@ class Some {
 // EXIST:  open
 // EXIST:  out
 /*why?*/
+// EXIST:  reified
+/*why?*/
 // EXIST:  override
 // EXIST:  private
 // EXIST:  protected
@@ -31,4 +33,5 @@ class Some {
 /*why?*/
 // EXIST:  constructor
 // EXIST:  init
-// NUMBER: 26
+// EXIST:  companion object
+// NOTHING_ELSE: true
