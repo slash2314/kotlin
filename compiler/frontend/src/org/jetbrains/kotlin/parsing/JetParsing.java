@@ -44,12 +44,14 @@ public class JetParsing extends AbstractJetParsing {
         }
     }
 
-    private static final TokenSet TOPLEVEL_OBJECT_FIRST = TokenSet.create(TYPE_ALIAS_KEYWORD, TRAIT_KEYWORD, INTERFACE_KEYWORD, CLASS_KEYWORD,
-                FUN_KEYWORD, VAL_KEYWORD, PACKAGE_KEYWORD);
-    private static final TokenSet ENUM_MEMBER_FIRST = TokenSet.create(TYPE_ALIAS_KEYWORD, TRAIT_KEYWORD, INTERFACE_KEYWORD, CLASS_KEYWORD,
-                FUN_KEYWORD, VAL_KEYWORD, LBRACE, IDENTIFIER, OBJECT_KEYWORD);
+    private static final TokenSet TOP_LEVEL_DECLARATION_FIRST = TokenSet.create(
+            TYPE_ALIAS_KEYWORD, TRAIT_KEYWORD, INTERFACE_KEYWORD, CLASS_KEYWORD, OBJECT_KEYWORD,
+            FUN_KEYWORD, VAL_KEYWORD, PACKAGE_KEYWORD);
+    private static final TokenSet DECLARATION_FIRST = TokenSet.orSet(TOP_LEVEL_DECLARATION_FIRST,
+                                                                     TokenSet.create(INIT_KEYWORD, GET_KEYWORD, SET_KEYWORD, CONSTRUCTOR_KEYWORD));
 
-    private static final TokenSet CLASS_NAME_RECOVERY_SET = TokenSet.orSet(TokenSet.create(LT, LPAR, COLON, LBRACE), TOPLEVEL_OBJECT_FIRST);
+    private static final TokenSet CLASS_NAME_RECOVERY_SET = TokenSet.orSet(TokenSet.create(LT, LPAR, COLON, LBRACE),
+                                                                           TOP_LEVEL_DECLARATION_FIRST);
     private static final TokenSet TYPE_PARAMETER_GT_RECOVERY_SET = TokenSet.create(WHERE_KEYWORD, LPAR, COLON, LBRACE, GT);
     private static final TokenSet PARAMETER_NAME_RECOVERY_SET = TokenSet.create(COLON, EQ, COMMA, RPAR);
     private static final TokenSet PACKAGE_NAME_RECOVERY_SET = TokenSet.create(DOT, EOL_OR_SEMICOLON);
@@ -105,7 +107,7 @@ public class JetParsing extends AbstractJetParsing {
         parsePreamble();
 
         while (!eof()) {
-            parseTopLevelObject();
+            parseTopLevelDeclaration();
         }
 
         fileMarker.done(JET_FILE);
@@ -368,7 +370,7 @@ public class JetParsing extends AbstractJetParsing {
      *   : object
      *   ;
      */
-    private void parseTopLevelObject() {
+    private void parseTopLevelDeclaration() {
         PsiBuilder.Marker decl = mark();
 
         ModifierDetector detector = new ModifierDetector();
@@ -395,6 +397,11 @@ public class JetParsing extends AbstractJetParsing {
         else if (keywordToken == OBJECT_KEYWORD) {
             parseObject(NameParsingMode.REQUIRED, true);
             declType = OBJECT_DECLARATION;
+        }
+        else if (at(LBRACE)) {
+            error("Expecting a top level declaration");
+            parseBlock();
+            declType = FUN;
         }
 
         if (declType == null) {
@@ -688,7 +695,7 @@ public class JetParsing extends AbstractJetParsing {
         beforeConstructorModifiers.drop();
 
         if (at(LPAR)) {
-            parseValueParameterList(false, /* typeRequired  = */ true, TokenSet.create(LBRACE));
+            parseValueParameterList(false, /* typeRequired  = */ true, TokenSet.create(LBRACE, RBRACE));
             primaryConstructorMarker.done(PRIMARY_CONSTRUCTOR);
         }
         else if (hasConstructorModifiers) {
@@ -929,7 +936,7 @@ public class JetParsing extends AbstractJetParsing {
         IElementType declType = parseMemberDeclarationRest(detector.isEnumDetected(), detector.isDefaultDetected());
 
         if (declType == null) {
-            errorWithRecovery("Expecting member declaration", TokenSet.create(RBRACE));
+            errorWithRecovery("Expecting member declaration", TokenSet.EMPTY);
             decl.drop();
         }
         else {
@@ -969,6 +976,11 @@ public class JetParsing extends AbstractJetParsing {
         else if (at(CONSTRUCTOR_KEYWORD)) {
             parseSecondaryConstructor();
             declType = SECONDARY_CONSTRUCTOR;
+        }
+        else if (at(LBRACE)) {
+            error("Expecting member declaration");
+            parseBlock();
+            declType = FUN;
         }
         return declType;
     }
@@ -1075,7 +1087,7 @@ public class JetParsing extends AbstractJetParsing {
         }
         else {
             errorWithRecovery("Expecting constructor call (<class-name>(...))",
-                              TokenSet.orSet(TOPLEVEL_OBJECT_FIRST, TokenSet.create(RBRACE, LBRACE, COMMA, SEMICOLON)));
+                              TokenSet.orSet(TOP_LEVEL_DECLARATION_FIRST, TokenSet.create(RBRACE, LBRACE, COMMA, SEMICOLON)));
             initializer.drop();
             return;
         }
@@ -1094,13 +1106,13 @@ public class JetParsing extends AbstractJetParsing {
 
         advance(); // TYPE_ALIAS_KEYWORD
 
-        expect(IDENTIFIER, "Type name expected", TokenSet.orSet(TokenSet.create(LT, EQ, SEMICOLON), TOPLEVEL_OBJECT_FIRST));
+        expect(IDENTIFIER, "Type name expected", TokenSet.orSet(TokenSet.create(LT, EQ, SEMICOLON), TOP_LEVEL_DECLARATION_FIRST));
 
         if (parseTypeParameterList(TYPE_PARAMETER_GT_RECOVERY_SET)) {
             parseTypeConstraints();
         }
 
-        expect(EQ, "Expecting '='", TokenSet.orSet(TOPLEVEL_OBJECT_FIRST, TokenSet.create(SEMICOLON)));
+        expect(EQ, "Expecting '='", TokenSet.orSet(TOP_LEVEL_DECLARATION_FIRST, TokenSet.create(SEMICOLON)));
 
         parseTypeRef();
 
@@ -1194,7 +1206,7 @@ public class JetParsing extends AbstractJetParsing {
             }
             if (!atSet(EOL_OR_SEMICOLON, RBRACE)) {
                 if (getLastToken() != SEMICOLON) {
-                    errorUntil("Property getter or setter expected", TokenSet.create(EOL_OR_SEMICOLON));
+                    errorUntil("Property getter or setter expected", TokenSet.create(EOL_OR_SEMICOLON, LBRACE, RBRACE));
                 }
             }
             else {
@@ -1308,8 +1320,12 @@ public class JetParsing extends AbstractJetParsing {
             setterParameter.done(VALUE_PARAMETER);
             parameterList.done(VALUE_PARAMETER_LIST);
         }
-        if (!at(RPAR)) errorUntil("Expecting ')'", TokenSet.create(RPAR, COLON, LBRACE, EQ, EOL_OR_SEMICOLON));
-        expect(RPAR, "Expecting ')'", TokenSet.create(RPAR, COLON, LBRACE, EQ));
+        if (!at(RPAR)) {
+            errorUntil("Expecting ')'", TokenSet.create(RPAR, COLON, LBRACE, RBRACE, EQ, EOL_OR_SEMICOLON));
+        }
+        if (at(RPAR)) {
+            advance();
+        }
         myBuilder.restoreNewlinesState();
 
         if (at(COLON)) {
@@ -1348,7 +1364,7 @@ public class JetParsing extends AbstractJetParsing {
 
         boolean typeParameterListOccurred = false;
         if (at(LT)) {
-            parseTypeParameterList(TokenSet.create(LBRACKET, LBRACE, LPAR));
+            parseTypeParameterList(TokenSet.create(LBRACKET, LBRACE, RBRACE, LPAR));
             typeParameterListOccurred = true;
         }
 
@@ -1362,7 +1378,7 @@ public class JetParsing extends AbstractJetParsing {
 
         myBuilder.restoreJoiningComplexTokensState();
 
-        TokenSet valueParametersFollow = TokenSet.create(EQ, LBRACE, SEMICOLON, RPAR);
+        TokenSet valueParametersFollow = TokenSet.create(EQ, LBRACE, RBRACE, SEMICOLON, RPAR);
 
         if (at(LT)) {
             PsiBuilder.Marker error = mark();
@@ -1464,7 +1480,7 @@ public class JetParsing extends AbstractJetParsing {
     }
 
     private boolean definitelyOutOfReceiver() {
-        return atSet(EQ, COLON, LBRACE, RBRACE, BY_KEYWORD) || atSet(TOPLEVEL_OBJECT_FIRST);
+        return atSet(EQ, COLON, LBRACE, RBRACE, BY_KEYWORD) || atSet(TOP_LEVEL_DECLARATION_FIRST);
     }
 
     /*
@@ -1473,11 +1489,12 @@ public class JetParsing extends AbstractJetParsing {
     private void parseFunctionOrPropertyName(boolean receiverFound, String title, TokenSet nameFollow, boolean nameRequired) {
         if (nameRequired && atSet(nameFollow)) return; // no name
 
+        TokenSet recoverySet = TokenSet.orSet(nameFollow, TokenSet.create(LBRACE, RBRACE));
         if (!receiverFound) {
-            expect(IDENTIFIER, "Expecting " + title + " name or receiver type", nameFollow);
+            expect(IDENTIFIER, "Expecting " + title + " name or receiver type", recoverySet);
         }
         else {
-            expect(IDENTIFIER, "Expecting " + title + " name", nameFollow);
+            expect(IDENTIFIER, "Expecting " + title + " name", recoverySet);
         }
     }
 
@@ -1497,7 +1514,7 @@ public class JetParsing extends AbstractJetParsing {
             consumeIf(SEMICOLON);
         }
         else {
-            errorAndAdvance("Expecting function body");
+            error("Expecting function body");
         }
     }
 
@@ -1652,14 +1669,14 @@ public class JetParsing extends AbstractJetParsing {
         parseAnnotations(ONLY_ESCAPED_REGULAR_ANNOTATIONS);
 
         PsiBuilder.Marker reference = mark();
-        if (expect(IDENTIFIER, "Expecting type parameter name", TokenSet.orSet(TokenSet.create(COLON, COMMA), TYPE_REF_FIRST))) {
+        if (expect(IDENTIFIER, "Expecting type parameter name", TokenSet.orSet(TokenSet.create(COLON, COMMA, LBRACE, RBRACE), TYPE_REF_FIRST))) {
             reference.done(REFERENCE_EXPRESSION);
         }
         else {
             reference.drop();
         }
 
-        expect(COLON, "Expecting ':' before the upper bound", TYPE_REF_FIRST);
+        expect(COLON, "Expecting ':' before the upper bound", TokenSet.orSet(TokenSet.create(LBRACE, RBRACE), TYPE_REF_FIRST));
 
         parseTypeRef();
 
@@ -1776,7 +1793,7 @@ public class JetParsing extends AbstractJetParsing {
         }
         else {
             errorWithRecovery("Type expected",
-                    TokenSet.orSet(TOPLEVEL_OBJECT_FIRST,
+                    TokenSet.orSet(TOP_LEVEL_DECLARATION_FIRST,
                                    TokenSet.create(EQ, COMMA, GT, RBRACKET, DOT, RPAR, RBRACE, LBRACE, SEMICOLON), extraRecoverySet));
         }
 
@@ -1834,7 +1851,7 @@ public class JetParsing extends AbstractJetParsing {
 
         if (at(PACKAGE_KEYWORD)) {
             advance(); // PACKAGE_KEYWORD
-            expect(DOT, "Expecting '.'", TokenSet.create(IDENTIFIER));
+            expect(DOT, "Expecting '.'", TokenSet.create(IDENTIFIER, LBRACE, RBRACE));
         }
 
         PsiBuilder.Marker reference = mark();
@@ -1842,7 +1859,7 @@ public class JetParsing extends AbstractJetParsing {
             recoverOnParenthesizedWordForPlatformTypes(0, "Mutable", true);
 
             if (expect(IDENTIFIER, "Expecting type name",
-                       TokenSet.orSet(JetExpressionParsing.EXPRESSION_FIRST, JetExpressionParsing.EXPRESSION_FOLLOW))) {
+                       TokenSet.orSet(JetExpressionParsing.EXPRESSION_FIRST, JetExpressionParsing.EXPRESSION_FOLLOW, DECLARATION_FIRST))) {
                 reference.done(REFERENCE_EXPRESSION);
             }
             else {

@@ -631,9 +631,21 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
             doTest(fileName);
         }
 
+        @TestMetadata("InfixCallNoSpecialLambdaArgumentItem.kt")
+        public void testInfixCallNoSpecialLambdaArgumentItem() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/InfixCallNoSpecialLambdaArgumentItem.kt");
+            doTest(fileName);
+        }
+
         @TestMetadata("InsideAnonymousClass.kt")
         public void testInsideAnonymousClass() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/InsideAnonymousClass.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("InterfaceNameBeforeRunBug.kt")
+        public void testInterfaceNameBeforeRunBug() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/InterfaceNameBeforeRunBug.kt");
             doTest(fileName);
         }
 
@@ -928,6 +940,12 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
         @TestMetadata("SmartCastInWhen.kt")
         public void testSmartCastInWhen() throws Exception {
             String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/SmartCastInWhen.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("SmartCastThis.kt")
+        public void testSmartCastThis() throws Exception {
+            String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/SmartCastThis.kt");
             doTest(fileName);
         }
 
@@ -1286,6 +1304,12 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
             @TestMetadata("AfterComma.kt")
             public void testAfterComma() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/namedParameters/AfterComma.kt");
+                doTest(fileName);
+            }
+
+            @TestMetadata("AfterVararg.kt")
+            public void testAfterVararg() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/basic/common/namedParameters/AfterVararg.kt");
                 doTest(fileName);
             }
 

@@ -16,17 +16,19 @@
 
 package org.jetbrains.kotlin.idea.completion
 
-import com.intellij.codeInsight.lookup.CharFilter
-import com.intellij.codeInsight.lookup.Lookup
-import com.intellij.codeInsight.lookup.CharFilter.Result
-import org.jetbrains.kotlin.psi.JetFile
-import com.intellij.openapi.util.Key
-import com.intellij.codeInsight.completion.CompletionService
 import com.intellij.codeInsight.completion.CompletionProgressIndicator
+import com.intellij.codeInsight.completion.CompletionService
+import com.intellij.codeInsight.lookup.CharFilter
+import com.intellij.codeInsight.lookup.CharFilter.Result
+import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.openapi.util.Key
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.psi.psiUtil.prevLeafSkipWhitespacesAndComments
+import com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.lexer.JetTokens
+import org.jetbrains.kotlin.psi.JetFile
 import org.jetbrains.kotlin.psi.JetFunctionLiteral
+import org.jetbrains.kotlin.psi.psiUtil.prevLeaf
 
 public class KotlinCompletionCharFilter() : CharFilter() {
     companion object {
@@ -79,16 +81,16 @@ public class KotlinCompletionCharFilter() : CharFilter() {
                     Result.HIDE_LOOKUP
             }
 
-            ',', ' ', '(', '=' -> Result.SELECT_ITEM_AND_FINISH_LOOKUP
+            ',', ' ', '(', '=', '!' -> Result.SELECT_ITEM_AND_FINISH_LOOKUP
 
             else -> CharFilter.Result.HIDE_LOOKUP
         }
     }
 
     private fun isInFunctionLiteralStart(position: PsiElement): Boolean {
-        var prev = position.prevLeafSkipWhitespacesAndComments()
+        var prev = position.prevLeaf { it !is PsiWhiteSpace && it !is PsiComment }
         if (prev?.getNode()?.getElementType() == JetTokens.LPAR) {
-            prev = prev?.prevLeafSkipWhitespacesAndComments()
+            prev = prev?.prevLeaf { it !is PsiWhiteSpace && it !is PsiComment }
         }
         if (prev?.getNode()?.getElementType() != JetTokens.LBRACE) return false
         val functionLiteral = prev!!.getParent() as? JetFunctionLiteral ?: return false

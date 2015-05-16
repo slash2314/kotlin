@@ -39,8 +39,14 @@ class LookupElementsCollector(
         private val resolutionFacade: ResolutionFacade,
         private val lookupElementFactory: LookupElementFactory,
         private val inDescriptor: DeclarationDescriptor?,
-        private val surroundCallsWithBraces: Boolean
+        private val context: LookupElementsCollector.Context
 ) {
+    public enum class Context {
+        NORMAL
+        STRING_TEMPLATE_AFTER_DOLLAR
+        INFIX_CALL
+    }
+
     private val elements = ArrayList<LookupElement>()
 
     public fun flushToResultSet(resultSet: CompletionResultSet) {
@@ -63,15 +69,15 @@ class LookupElementsCollector(
         }
     }
 
-    public fun addDescriptorElements(descriptor: DeclarationDescriptor, suppressAutoInsertion: Boolean, withReceiverCast: Boolean) {
+    private fun addDescriptorElements(descriptor: DeclarationDescriptor, suppressAutoInsertion: Boolean, withReceiverCast: Boolean) {
         run {
-            var lookupElement = lookupElementFactory.createLookupElement(resolutionFacade, descriptor, true)
+            var lookupElement = lookupElementFactory.createLookupElement(descriptor, true)
 
             if (withReceiverCast) {
                 lookupElement = lookupElement.withReceiverCast()
             }
 
-            if (surroundCallsWithBraces && (descriptor is FunctionDescriptor || descriptor is ClassifierDescriptor)) {
+            if (context == Context.STRING_TEMPLATE_AFTER_DOLLAR && (descriptor is FunctionDescriptor || descriptor is ClassifierDescriptor)) {
                 lookupElement = lookupElement.withBracesSurrounding()
             }
 
@@ -84,14 +90,14 @@ class LookupElementsCollector(
         }
 
         // add special item for function with one argument of function type with more than one parameter
-        if (descriptor is FunctionDescriptor) {
+        if (context != Context.INFIX_CALL && descriptor is FunctionDescriptor) {
             val parameters = descriptor.getValueParameters()
             if (parameters.size() == 1) {
                 val parameterType = parameters.get(0).getType()
                 if (KotlinBuiltIns.isFunctionOrExtensionFunctionType(parameterType)) {
                     val parameterCount = KotlinBuiltIns.getParameterTypeProjectionsFromFunctionType(parameterType).size()
                     if (parameterCount > 1) {
-                        var lookupElement = lookupElementFactory.createLookupElement(resolutionFacade, descriptor, true)
+                        var lookupElement = lookupElementFactory.createLookupElement(descriptor, true)
 
                         lookupElement = object : LookupElementDecorator<LookupElement>(lookupElement) {
                             override fun renderElement(presentation: LookupElementPresentation) {
@@ -108,7 +114,7 @@ class LookupElementsCollector(
                             }
                         }
 
-                        if (surroundCallsWithBraces) {
+                        if (context == Context.STRING_TEMPLATE_AFTER_DOLLAR) {
                             lookupElement = lookupElement.withBracesSurrounding()
                         }
 
@@ -121,10 +127,10 @@ class LookupElementsCollector(
         if (descriptor is PropertyDescriptor) {
             var lookupElement = lookupElementFactory.createBackingFieldLookupElement(descriptor, inDescriptor, resolutionFacade)
             if (lookupElement != null) {
-                if (surroundCallsWithBraces) {
-                    lookupElement = lookupElement!!.withBracesSurrounding()
+                if (context == Context.STRING_TEMPLATE_AFTER_DOLLAR) {
+                    lookupElement = lookupElement.withBracesSurrounding()
                 }
-                addElement(lookupElement!!)
+                addElement(lookupElement)
             }
         }
     }
@@ -136,13 +142,18 @@ class LookupElementsCollector(
                     getDelegate().handleInsert(context)
 
                     if (context.shouldAddCompletionChar() && !isJustTyping(context, this)) {
-                        val handler = when (context.getCompletionChar()) {
-                            ',' -> WithTailInsertHandler.commaTail()
-                            '=' -> WithTailInsertHandler.eqTail()
-                            else -> null
+                        when (context.getCompletionChar()) {
+                            ',' -> WithTailInsertHandler.commaTail().postHandleInsert(context, getDelegate())
+
+                            '=' -> WithTailInsertHandler.eqTail().postHandleInsert(context, getDelegate())
+
+                            '!' -> {
+                                WithExpressionPrefixInsertHandler("!").postHandleInsert(context)
+                                context.setAddCompletionChar(false)
+                            }
                         }
-                        handler?.postHandleInsert(context, getDelegate())
                     }
+
                 }
             })
         }

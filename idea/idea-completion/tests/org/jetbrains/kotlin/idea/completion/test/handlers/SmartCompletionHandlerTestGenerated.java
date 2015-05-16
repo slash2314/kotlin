@@ -55,6 +55,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("AfterVararg.kt")
+    public void testAfterVararg() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/AfterVararg.kt");
+        doTest(fileName);
+    }
+
     public void testAllFilesPresentInSmart() throws Exception {
         JetTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/idea-completion/testData/handlers/smart"), Pattern.compile("^(.+)\\.kt$"), true);
     }
@@ -293,6 +299,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("DefaultParams.kt")
+    public void testDefaultParams() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/DefaultParams.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("DoNotEraseBraceOnTab.kt")
     public void testDoNotEraseBraceOnTab() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/DoNotEraseBraceOnTab.kt");
@@ -311,6 +323,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("ExclChar.kt")
+    public void testExclChar() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/ExclChar.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("ForLoopRange.kt")
     public void testForLoopRange() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/ForLoopRange.kt");
@@ -320,6 +338,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
     @TestMetadata("ForLoopRange2.kt")
     public void testForLoopRange2() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/ForLoopRange2.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("FunctionLiteralParamAlreadyExist.kt")
+    public void testFunctionLiteralParamAlreadyExist() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/FunctionLiteralParamAlreadyExist.kt");
         doTest(fileName);
     }
 
@@ -455,6 +479,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("LastNonOptionalParamIsFunction.kt")
+    public void testLastNonOptionalParamIsFunction() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/LastNonOptionalParamIsFunction.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("MergeTail1.kt")
     public void testMergeTail1() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/MergeTail1.kt");
@@ -488,6 +518,42 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
     @TestMetadata("MultipleArgsItemByTab.kt")
     public void testMultipleArgsItemByTab() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/MultipleArgsItemByTab.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgument1.kt")
+    public void testNamedArgument1() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgument1.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgument2.kt")
+    public void testNamedArgument2() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgument2.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgument3.kt")
+    public void testNamedArgument3() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgument3.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgumentVararg1.kt")
+    public void testNamedArgumentVararg1() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgumentVararg1.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgumentVararg2.kt")
+    public void testNamedArgumentVararg2() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgumentVararg2.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("NamedArgumentVararg3.kt")
+    public void testNamedArgumentVararg3() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/NamedArgumentVararg3.kt");
         doTest(fileName);
     }
 
@@ -569,6 +635,12 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
         doTest(fileName);
     }
 
+    @TestMetadata("SecondVararg.kt")
+    public void testSecondVararg() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/SecondVararg.kt");
+        doTest(fileName);
+    }
+
     @TestMetadata("TabReplaceComma1.kt")
     public void testTabReplaceComma1() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/TabReplaceComma1.kt");
@@ -644,6 +716,42 @@ public class SmartCompletionHandlerTestGenerated extends AbstractSmartCompletion
     @TestMetadata("True2.kt")
     public void testTrue2() throws Exception {
         String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/True2.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg1.kt")
+    public void testVararg1() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg1.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg2.kt")
+    public void testVararg2() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg2.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg3.kt")
+    public void testVararg3() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg3.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg4.kt")
+    public void testVararg4() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg4.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg5.kt")
+    public void testVararg5() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg5.kt");
+        doTest(fileName);
+    }
+
+    @TestMetadata("Vararg6.kt")
+    public void testVararg6() throws Exception {
+        String fileName = JetTestUtils.navigationMetadata("idea/idea-completion/testData/handlers/smart/Vararg6.kt");
         doTest(fileName);
     }
 

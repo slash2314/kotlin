@@ -16,26 +16,22 @@
 
 package org.jetbrains.kotlin.idea.completion.smart
 
-import org.jetbrains.kotlin.idea.completion.ExpectedInfo
-import org.jetbrains.kotlin.psi.JetExpression
-import com.intellij.codeInsight.lookup.LookupElement
-import com.intellij.ui.LayeredIcon
-import com.intellij.codeInsight.lookup.LookupElementBuilder
-import org.jetbrains.kotlin.idea.completion.Tail
-import org.jetbrains.kotlin.idea.completion.ItemPriority
-import org.jetbrains.kotlin.resolve.BindingContext
-import java.util.HashSet
-import org.jetbrains.kotlin.resolve.scopes.JetScope
-import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
-import org.jetbrains.kotlin.idea.JetDescriptorIconProvider
-import org.jetbrains.kotlin.descriptors.VariableDescriptor
-import org.jetbrains.kotlin.idea.completion.PositionalArgumentExpectedInfo
-import java.util.ArrayList
-import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
-import org.jetbrains.kotlin.idea.completion.assignPriority
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.ui.LayeredIcon
+import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
+import org.jetbrains.kotlin.descriptors.VariableDescriptor
+import org.jetbrains.kotlin.idea.JetDescriptorIconProvider
+import org.jetbrains.kotlin.idea.completion.*
+import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
+import org.jetbrains.kotlin.psi.JetExpression
+import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.scopes.JetScope
 import org.jetbrains.kotlin.types.JetType
 import org.jetbrains.kotlin.types.checker.JetTypeChecker
+import java.util.ArrayList
+import java.util.HashSet
 
 class MultipleArgumentsItemProvider(val bindingContext: BindingContext,
                                     val smartCastTypes: (VariableDescriptor) -> Collection<JetType>) {
@@ -47,15 +43,15 @@ class MultipleArgumentsItemProvider(val bindingContext: BindingContext,
 
         val added = HashSet<String>()
         for (expectedInfo in expectedInfos) {
-            if (expectedInfo is PositionalArgumentExpectedInfo && expectedInfo.argumentIndex == 0) {
+            if (expectedInfo is ArgumentExpectedInfo && expectedInfo.position == ArgumentPosition(0)) {
                 val parameters = expectedInfo.function.getValueParameters()
-                if (parameters.size > 1) {
+                if (parameters.size() > 1) {
                     val variables = ArrayList<VariableDescriptor>()
-                    for ((i, parameter) in parameters.withIndices()) {
+                    for ((i, parameter) in parameters.withIndex()) {
                         val variable = variableInScope(parameter, resolutionScope) ?: break
                         variables.add(variable) // TODO: cannot inline variable because of KT-5890
 
-                        if (i > 0 && parameters.stream().drop(i + 1).all { it.hasDefaultValue() }) { // this is the last parameter or all others have default values
+                        if (i > 0 && parameters.asSequence().drop(i + 1).all { it.hasDefaultValue() }) { // this is the last parameter or all others have default values
                             val lookupElement = createParametersLookupElement(variables)
                             if (added.add(lookupElement.getLookupString())) { // check that we don't already have item with the same text
                                 collection.add(lookupElement)
