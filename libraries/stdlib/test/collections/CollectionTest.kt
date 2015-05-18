@@ -618,8 +618,8 @@ class CollectionTest {
 
     private fun <T> CompareContext<T>.equalityBehavior() {
         equals()
-        propertyEquals { hashCode() }
-        propertyEquals { toString() }
+        propertyEquals("hashCode") { hashCode() }
+        propertyEquals("toString") { toString() }
     }
 
 
@@ -638,19 +638,17 @@ private fun compare<T>(expected: T, actual: T, block: CompareContext<T>.() -> Un
 
 private class CompareContext<out T>(public val expected: T, public val actual: T) {
 
-    public fun equals(): Unit = assertEquals(expected, actual)
-    public fun propertyEquals<P>(getter: T.() -> P): Unit = assertEquals(expected.getter(), actual.getter())
-    public fun propertyFails(getter: T.() -> Unit): Unit {
-        assertFailEquals({expected.getter()}, {actual.getter()})
-    }
-    public fun compareProperty<P>(getter: T.() -> P, block: CompareContext<P>.() -> Unit): Unit {
+    public fun equals() { assertEquals(expected, actual) }
+    public fun propertyEquals<P>(message: String = "", getter: T.() -> P) { assertEquals(expected.getter(), actual.getter(), message) }
+    public fun propertyFails(getter: T.() -> Unit) { assertFailEquals({expected.getter()}, {actual.getter()}) }
+    public fun compareProperty<P>(getter: T.() -> P, block: CompareContext<P>.() -> Unit) {
         compare(expected.getter(), actual.getter(), block)
     }
 
     private fun assertFailEquals(expected: () -> Unit, actual: () -> Unit) {
         val expectedFail = fails(expected)
         val actualFail = fails(actual)
-        assertEquals(expectedFail != null, actualFail != null)
+        //assertEquals(expectedFail != null, actualFail != null)
         assertTypeEquals(expectedFail, actualFail)
     }
 }
