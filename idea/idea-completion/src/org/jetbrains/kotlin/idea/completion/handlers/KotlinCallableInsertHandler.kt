@@ -80,7 +80,7 @@ public abstract class KotlinCallableInsertHandler : BaseDeclarationInsertHandler
 public object KotlinPropertyInsertHandler : KotlinCallableInsertHandler()
 
 public enum class CaretPosition {
-    IN_BRACKETS
+    IN_BRACKETS,
     AFTER_BRACKETS
 }
 
