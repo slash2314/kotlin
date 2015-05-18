@@ -1,0 +1,2 @@
+// TODO Remove this restriction when type annotations will be supported in js backend.
+// TARGET_BACKEND: JVM

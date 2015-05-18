@@ -9,6 +9,3 @@ data A("a") B(1) C class Annotations {
 
     inline A("p") B(3) C val p: [B(4)] Int = 2
 }
-
-// TODO Remove this restriction when type annotations will be supported in js backend.
-// TARGET_BACKEND: JVM

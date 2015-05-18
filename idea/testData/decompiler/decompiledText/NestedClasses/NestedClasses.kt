@@ -29,6 +29,3 @@ class NestedClasses {
         }
     }
 }
-
-// TODO Remove this restriction when nested classes will be supported in js backend.
-// TARGET_BACKEND: JVM

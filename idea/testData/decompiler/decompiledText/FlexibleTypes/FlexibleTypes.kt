@@ -10,4 +10,3 @@ abstract class FlexibleTypes() {
     fun withBody(): ft<Int, Int?> { return 1 }
 }
 
-// TARGET_BACKEND: JVM

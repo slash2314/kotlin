@@ -25,6 +25,3 @@ class SecondaryConstructors(x: Boolean) {
 }
 
 annotation class anno
-
-// TODO Remove this restriction when secondary constructors will be supported in js backend.
-// TARGET_BACKEND: JVM
