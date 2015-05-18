@@ -16,6 +16,9 @@
 
 package org.jetbrains.kotlin.maven;
 
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -23,31 +26,31 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments;
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments;
-import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler;
+import org.jetbrains.kotlin.cli.js.K2JSCompiler;
+import org.jetbrains.kotlin.utils.LibraryUtils;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Compiles Kotlin test sources
+ * Converts Kotlin to JavaScript code
  *
  * @noinspection UnusedDeclaration
  */
-@Mojo(name = "test-compile",
+@Mojo(name = "test-js",
         defaultPhase = LifecyclePhase.TEST_COMPILE,
         requiresDependencyResolution = ResolutionScope.TEST
 )
-public class KotlinTestCompileMojo extends K2JVMCompileMojo {
+public class KotlinTestJSCompilerMojo extends K2JSCompilerMojo {
+
     /**
      * Flag to allow test compilation to be skipped.
      */
     @Parameter(property = "maven.test.skip", defaultValue = "false")
     private boolean skip;
-
-    // TODO it would be nice to avoid using 2 injected fields for sources
-    // but I've not figured out how to have a defaulted parameter value
-    // which is also customisable inside an <execution> in a maven pom.xml
-    // so for now lets just use 2 fields
 
     /**
      * The default source directories containing the sources to be compiled.
@@ -68,10 +71,27 @@ public class KotlinTestCompileMojo extends K2JVMCompileMojo {
     }
 
     /**
-     * The source directories containing the sources to be compiled for tests.
+     * The output JS file name
      */
-    @Parameter(defaultValue = "${project.testCompileSourceRoots}", required = true, readonly = true)
-    private List<String> defaultSourceDir;
+    @Parameter(defaultValue = "${project.build.directory}/test-js/${project.artifactId}-tests.js", required = true)
+    private String outputFile;
+
+    /**
+     * The output metafile name
+     */
+    @Parameter(defaultValue = "${project.build.directory}/test-js/${project.artifactId}-tests.meta.js")
+    private String metaFile;
+
+    @Override
+    protected void configureSpecificCompilerArguments(@NotNull K2JSCompilerArguments arguments) throws MojoExecutionException {
+        module = testModule;
+        output = testOutput;
+
+        super.configureSpecificCompilerArguments(arguments);
+
+        arguments.outputFile = outputFile;
+        arguments.metaInfo = metaFile;
+    }
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -80,14 +100,5 @@ public class KotlinTestCompileMojo extends K2JVMCompileMojo {
         } else {
             super.execute();
         }
-    }
-
-    @Override
-    protected void configureSpecificCompilerArguments(@NotNull K2JVMCompilerArguments arguments) throws MojoExecutionException {
-        module = testModule;
-        classpath = testClasspath;
-        output = testOutput;
-
-        super.configureSpecificCompilerArguments(arguments);
     }
 }
