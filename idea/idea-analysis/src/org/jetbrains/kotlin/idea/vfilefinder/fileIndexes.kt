@@ -21,39 +21,13 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.indexing.*
 import com.intellij.util.io.KeyDescriptor
+import org.jetbrains.kotlin.idea.decompiler.KotlinJavaScriptMetaFileType
+import org.jetbrains.kotlin.idea.decompiler.navigation.JsMetaFileUtils
 import org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache
 import org.jetbrains.kotlin.name.FqName
 import java.io.DataInput
 import java.io.DataOutput
 import java.util.Collections
-
-val KEY_DESCRIPTOR = object : KeyDescriptor<FqName> {
-    override fun save(output: DataOutput, value: FqName) = output.writeUTF(value.asString())
-
-    override fun read(input: DataInput) = FqName(input.readUTF())
-
-    override fun getHashCode(value: FqName) = value.asString().hashCode()
-
-    override fun isEqual(val1: FqName?, val2: FqName?) = val1 == val2
-}
-
-fun indexer(log: Logger, f: (VirtualFile) -> FqName?): DataIndexer<FqName, Void, FileContent> {
-    return DataIndexer {
-        try {
-            val fqName = f(it.getFile())
-            if (fqName != null) {
-                Collections.singletonMap<FqName, Void>(fqName, null)
-            }
-            else {
-                emptyMap()
-            }
-        }
-        catch (e: Throwable) {
-            log.warn("Error while indexing file " + it.getFileName(), e)
-            emptyMap()
-        }
-    }
-}
 
 public class KotlinClassFileIndex : ScalarIndexExtension<FqName>() {
     override fun getName() = KEY
@@ -85,4 +59,58 @@ public class KotlinClassFileIndex : ScalarIndexExtension<FqName>() {
     }
 }
 
+public class KotlinJavaScriptMetaFileIndex : ScalarIndexExtension<FqName>() {
+    override fun getName() = KEY
 
+    override fun getIndexer() = INDEXER
+
+    override fun getKeyDescriptor() = KEY_DESCRIPTOR
+
+    override fun getInputFilter() = INPUT_FILTER
+
+    override fun dependsOnFileContent() = true
+
+    override fun getVersion() = VERSION
+
+    companion object {
+        public val KEY: ID<FqName, Void> = ID.create(javaClass<KotlinJavaScriptMetaFileIndex>().getCanonicalName())
+
+        private val LOG = Logger.getInstance(javaClass<KotlinJavaScriptMetaFileIndex>())
+
+        private val VERSION = 1
+
+        private val INPUT_FILTER = FileBasedIndex.InputFilter { file -> file.getFileType() == KotlinJavaScriptMetaFileType }
+
+        private val INDEXER = indexer(LOG) {
+            file -> if (file.getFileType() == KotlinJavaScriptMetaFileType) JsMetaFileUtils.getClassFqName(file) else null
+        }
+    }
+}
+
+private val KEY_DESCRIPTOR = object : KeyDescriptor<FqName> {
+    override fun save(output: DataOutput, value: FqName) = output.writeUTF(value.asString())
+
+    override fun read(input: DataInput) = FqName(input.readUTF())
+
+    override fun getHashCode(value: FqName) = value.asString().hashCode()
+
+    override fun isEqual(val1: FqName?, val2: FqName?) = val1 == val2
+}
+
+private fun indexer(log: Logger, f: (VirtualFile) -> FqName?): DataIndexer<FqName, Void, FileContent> {
+    return DataIndexer {
+        try {
+            val fqName = f(it.getFile())
+            if (fqName != null) {
+                Collections.singletonMap<FqName, Void>(fqName, null)
+            }
+            else {
+                emptyMap()
+            }
+        }
+        catch (e: Throwable) {
+            log.warn("Error while indexing file " + it.getFileName(), e)
+            emptyMap()
+        }
+    }
+}
