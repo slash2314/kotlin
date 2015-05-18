@@ -52,6 +52,22 @@ public class MockLibraryUtil {
             @NotNull String sourcesPath,
             @NotNull String jarName,
             boolean addSources,
+            boolean isJsLibrary,
+            @NotNull String... extraClasspath
+    ) {
+        if (isJsLibrary) {
+            return compileJsLibraryToJar(sourcesPath, jarName, addSources);
+        }
+        else {
+            return compileLibraryToJar(sourcesPath, jarName, addSources, extraClasspath);
+        }
+    }
+
+    @NotNull
+    public static File compileLibraryToJar(
+            @NotNull String sourcesPath,
+            @NotNull String jarName,
+            boolean addSources,
             @NotNull String... extraClasspath
     ) {
         try {
@@ -83,16 +99,7 @@ public class MockLibraryUtil {
                 JetTestUtils.compileJavaFiles(javaFiles, options);
             }
 
-            File jarFile = new File(contentDir, jarName + ".jar");
-
-            ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(jarFile));
-            ZipUtil.addDirToZipRecursively(zip, jarFile, classesDir, "", null, null);
-            if (addSources) {
-                ZipUtil.addDirToZipRecursively(zip, jarFile, new File(sourcesPath), "src", null, null);
-            }
-            zip.close();
-
-            return jarFile;
+            return createJarFile(contentDir, classesDir, sourcesPath, jarName, addSources);
         }
         catch (IOException e) {
             throw UtilsPackage.rethrow(e);
@@ -113,44 +120,38 @@ public class MockLibraryUtil {
             File outputMetaFile = new File(outDir, jarName + ".meta.js");
             compileKotlin2JS(sourcesPath, outputFile, outputMetaFile);
 
-            File jarFile = new File(contentDir, jarName + ".jar");
-
-            ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(jarFile));
-            ZipUtil.addDirToZipRecursively(zip, jarFile, outDir, "", null, null);
-            if (addSources) {
-                ZipUtil.addDirToZipRecursively(zip, jarFile, new File(sourcesPath), "src", null, null);
-            }
-            zip.close();
-
-            return jarFile;
+            return createJarFile(contentDir, outDir, sourcesPath, jarName, addSources);
         }
         catch (IOException e) {
             throw UtilsPackage.rethrow(e);
         }
     }
 
-    // Runs compiler in custom class loader to avoid effects caused by replacing Application with another one created in compiler.
+    private static File createJarFile(File contentDir, File dirToAdd, String sourcesPath, String jarName, boolean addSources) throws IOException {
+        File jarFile = new File(contentDir, jarName + ".jar");
+
+        ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(jarFile));
+        ZipUtil.addDirToZipRecursively(zip, jarFile, dirToAdd, "", null, null);
+        if (addSources) {
+            ZipUtil.addDirToZipRecursively(zip, jarFile, new File(sourcesPath), "src", null, null);
+        }
+        zip.close();
+
+        return jarFile;
+    }
+
     private static void runCompiler(@NotNull List<String> args) {
-        try {
-            ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-            Class<?> compilerClass = getCompiler2JVMClass();
-            Object compiler = compilerClass.newInstance();
-            Method execMethod = compilerClass.getMethod("exec", PrintStream.class, String[].class);
+        runCompiler(getCompiler2JVMClass(), args);
+    }
 
-            Enum<?> invocationResult = (Enum<?>) execMethod.invoke(compiler, new PrintStream(outStream), ArrayUtil.toStringArray(args));
-
-            assertEquals(new String(outStream.toByteArray()), ExitCode.OK.name(), invocationResult.name());
-        }
-        catch (Throwable e) {
-            throw UtilsPackage.rethrow(e);
-        }
+    private static void runJsCompiler(@NotNull List<String> args) {
+        runCompiler(getCompiler2JSClass(), args);
     }
 
     // Runs compiler in custom class loader to avoid effects caused by replacing Application with another one created in compiler.
-    private static void runJsCompiler(@NotNull List<String> args) {
+    private static void runCompiler(@NotNull Class<?> compilerClass, @NotNull List<String> args) {
         try {
             ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-            Class<?> compilerClass = getCompiler2JSClass();
             Object compiler = compilerClass.newInstance();
             Method execMethod = compilerClass.getMethod("exec", PrintStream.class, String[].class);
 
@@ -198,7 +199,7 @@ public class MockLibraryUtil {
     }
 
     @NotNull
-    private static synchronized Class<?> getCompiler2JVMClass() throws IOException, ClassNotFoundException {
+    private static synchronized Class<?> getCompiler2JVMClass() {
         Class<?> compilerClass = compiler2JVMClassRef.get();
         if (compilerClass == null) {
             compilerClass = getCompilerClass(K2JVMCompiler.class.getName());
@@ -208,7 +209,7 @@ public class MockLibraryUtil {
     }
 
     @NotNull
-    private static synchronized Class<?> getCompiler2JSClass() throws IOException, ClassNotFoundException {
+    private static synchronized Class<?> getCompiler2JSClass() {
         Class<?> compilerClass = compiler2JSClassRef.get();
         if (compilerClass == null) {
             compilerClass = getCompilerClass(K2JSCompiler.class.getName());
@@ -218,12 +219,17 @@ public class MockLibraryUtil {
     }
 
     @NotNull
-    private static synchronized Class<?> getCompilerClass(String compilerClassName) throws IOException, ClassNotFoundException {
-        File kotlinCompilerJar = new File(PathUtil.getKotlinPathsForDistDirectory().getLibPath(), "kotlin-compiler.jar");
-        ClassLoader classLoader =
-                ClassPreloadingUtils.preloadClasses(Collections.singletonList(kotlinCompilerJar), 4096, null, null, null);
+    private static synchronized Class<?> getCompilerClass(String compilerClassName) {
+        try {
+            File kotlinCompilerJar = new File(PathUtil.getKotlinPathsForDistDirectory().getLibPath(), "kotlin-compiler.jar");
+            ClassLoader classLoader =
+                    ClassPreloadingUtils.preloadClasses(Collections.singletonList(kotlinCompilerJar), 4096, null, null, null);
 
-        return classLoader.loadClass(compilerClassName);
+            return classLoader.loadClass(compilerClassName);
+        }
+        catch (Throwable e) {
+            throw UtilsPackage.rethrow(e);
+        }
     }
 
     private MockLibraryUtil() {
