@@ -23,10 +23,9 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.serialization.SerializedResourcePaths
 
 public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths() {
-    public override val EXTENSION_REGISTRY: ExtensionRegistryLite
+    public override val EXTENSION_REGISTRY: ExtensionRegistryLite = ExtensionRegistryLite.newInstance()
 
     init {
-        EXTENSION_REGISTRY = ExtensionRegistryLite.newInstance()
         JsProtoBuf.registerAllExtensions(EXTENSION_REGISTRY)
     }
 
@@ -37,15 +36,15 @@ public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths(
             fqName.toPath().withSepIfNotEmpty() + shortName(fqName) + "." + CLASSES_FILE_EXTENSION
 
 
-    public override fun getClassMetadataPath(classId: ClassId): String {
+    override fun getClassMetadataPath(classId: ClassId): String {
         return classId.getPackageFqName().toPath().withSepIfNotEmpty() + classId.getRelativeClassName().asString() +
                "." + KotlinJavascriptSerializationUtil.CLASS_METADATA_FILE_EXTENSION
     }
 
-    public override fun getPackageFilePath(fqName: FqName): String =
+    override fun getPackageFilePath(fqName: FqName): String =
             getPackageClassFqName(fqName).toPath() + "." + KotlinJavascriptSerializationUtil.CLASS_METADATA_FILE_EXTENSION
 
-    public override fun getStringTableFilePath(fqName: FqName): String =
+    override fun getStringTableFilePath(fqName: FqName): String =
             fqName.toPath().withSepIfNotEmpty() + shortName(fqName) + "." + STRING_TABLE_FILE_EXTENSION
 
     private fun FqName.toPath() = this.asString().replace('.', '/')
@@ -56,6 +55,10 @@ public object KotlinJavascriptSerializedResourcePaths : SerializedResourcePaths(
             if (fqName.isRoot()) "default-package" else fqName.shortName().asString()
 
 }
+
+private val PACKAGE_CLASS_NAME_SUFFIX: String = "Package"
+private val DEFAULT_PACKAGE_CLASS_NAME: String = "_Default" + PACKAGE_CLASS_NAME_SUFFIX
+private val DEFAULT_PACKAGE_METAFILE_NAME: String = DEFAULT_PACKAGE_CLASS_NAME + "." + KotlinJavascriptSerializationUtil.CLASS_METADATA_FILE_EXTENSION
 
 public fun FqName.isPackageClassFqName(): Boolean = !this.isRoot() && getPackageClassFqName(this.parent()) == this
 
@@ -69,10 +72,6 @@ public fun isStringTableFile(fileName: String): Boolean =
 
 public fun isClassesInPackageFile(fileName: String): Boolean =
         KotlinJavascriptSerializedResourcePaths.getClassesInPackageFilePath(getPackageFqName(fileName)) == fileName
-
-private val PACKAGE_CLASS_NAME_SUFFIX: String = "Package"
-private val DEFAULT_PACKAGE_CLASS_NAME: String = "_Default" + PACKAGE_CLASS_NAME_SUFFIX
-private val DEFAULT_PACKAGE_METAFILE_NAME: String = DEFAULT_PACKAGE_CLASS_NAME + "." + KotlinJavascriptSerializationUtil.CLASS_METADATA_FILE_EXTENSION
 
 private fun getPackageFqName(fileName: String): FqName = FqName(getPackageName(fileName))
 
