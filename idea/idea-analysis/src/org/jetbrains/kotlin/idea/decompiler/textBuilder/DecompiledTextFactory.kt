@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.load.kotlin.header.isCompatiblePackageFacadeKind
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.renderer.DescriptorRendererBuilder
-import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.DescriptorUtils.isEnumEntry
 import org.jetbrains.kotlin.resolve.dataClassUtils.isComponentLike
 import org.jetbrains.kotlin.resolve.descriptorUtil.secondaryConstructors
@@ -88,11 +87,6 @@ public fun buildDecompiledTextFromJsMetadata(
         val classId = JsMetaFileUtils.getClassId(classFile)
         return buildDecompiledText(packageFqName, listOf(resolver.resolveTopLevelClass(classId)).filterNotNull(), descriptorRendererForKotlinJavascriptDecompiler)
     }
-}
-
-private fun getFqName(descriptor: ClassDescriptor): FqName? {
-    val fqNameUnsafe = DescriptorUtils.getFqName(descriptor);
-    return if (fqNameUnsafe.isSafe()) fqNameUnsafe.toSafe() else null
 }
 
 private val DECOMPILED_CODE_COMMENT = "/* compiled code */"
