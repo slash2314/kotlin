@@ -4,9 +4,6 @@ library
 open public class Exception(message: String? = null): Throwable(message) {}
 
 library
-open public class AssertionError(message: String? = null) : Exception(message) {}
-
-library
 open public class RuntimeException(message: String? = null) : Exception(message) {}
 
 library

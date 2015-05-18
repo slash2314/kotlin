@@ -185,7 +185,6 @@
                );
     }
 
-    Kotlin.AssertionError = createClassNowWithMessage(Kotlin.Exception);
     Kotlin.RuntimeException = createClassNowWithMessage(Kotlin.Exception);
     Kotlin.NullPointerException = createClassNowWithMessage(Kotlin.RuntimeException);
     Kotlin.NoSuchElementException = createClassNowWithMessage(Kotlin.RuntimeException);
