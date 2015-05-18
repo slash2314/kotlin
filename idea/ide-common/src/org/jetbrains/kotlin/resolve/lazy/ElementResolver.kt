@@ -306,25 +306,26 @@ public abstract class ElementResolver protected(
     private fun propertyAdditionalResolve(resolveSession: ResolveSession, jetProperty: JetProperty, trace: BindingTrace, file: JetFile, statementFilter: StatementFilter) {
         val propertyResolutionScope = resolveSession.getScopeProvider().getResolutionScopeForDeclaration(jetProperty)
 
-        val bodyResolveContext = BodyResolveContextForLazy(TopDownAnalysisMode.LocalDeclarations, object : Function<JetDeclaration, JetScope> {
-            override fun apply(declaration: JetDeclaration?): JetScope? {
-                assert(declaration!!.getParent() == jetProperty) { "Must be called only for property accessors, but called for " + declaration }
-                return resolveSession.getScopeProvider().getResolutionScopeForDeclaration(declaration)
-            }
-        })
         val bodyResolver = createBodyResolver(resolveSession, trace, file, statementFilter)
         val descriptor = resolveSession.resolveToDescriptor(jetProperty) as PropertyDescriptor
         ForceResolveUtil.forceResolveAllContents(descriptor)
 
         val propertyInitializer = jetProperty.getInitializer()
         if (propertyInitializer != null) {
-            bodyResolver.resolvePropertyInitializer(bodyResolveContext, jetProperty, descriptor, propertyInitializer, propertyResolutionScope)
+            bodyResolver.resolvePropertyInitializer(DataFlowInfo.EMPTY, jetProperty, descriptor, propertyInitializer, propertyResolutionScope)
         }
 
         val propertyDelegate = jetProperty.getDelegateExpression()
         if (propertyDelegate != null) {
-            bodyResolver.resolvePropertyDelegate(bodyResolveContext, jetProperty, descriptor, propertyDelegate, propertyResolutionScope, propertyResolutionScope)
+            bodyResolver.resolvePropertyDelegate(DataFlowInfo.EMPTY, jetProperty, descriptor, propertyDelegate, propertyResolutionScope, propertyResolutionScope)
         }
+
+        val bodyResolveContext = BodyResolveContextForLazy(TopDownAnalysisMode.LocalDeclarations, object : Function<JetDeclaration, JetScope> {
+            override fun apply(declaration: JetDeclaration?): JetScope? {
+                assert(declaration!!.getParent() == jetProperty) { "Must be called only for property accessors, but called for " + declaration }
+                return resolveSession.getScopeProvider().getResolutionScopeForDeclaration(declaration)
+            }
+        })
 
         bodyResolver.resolvePropertyAccessors(bodyResolveContext, jetProperty, descriptor)
 
@@ -339,7 +340,7 @@ public abstract class ElementResolver protected(
         ForceResolveUtil.forceResolveAllContents(functionDescriptor)
 
         val bodyResolver = createBodyResolver(resolveSession, trace, file, statementFilter)
-        bodyResolver.resolveFunctionBody(createEmptyContext(), trace, namedFunction, functionDescriptor, scope)
+        bodyResolver.resolveFunctionBody(DataFlowInfo.EMPTY, trace, namedFunction, functionDescriptor, scope)
     }
 
     private fun secondaryConstructorAdditionalResolve(resolveSession: ResolveSession, constructor: JetSecondaryConstructor, trace: BindingTrace, file: JetFile, statementFilter: StatementFilter) {
@@ -348,7 +349,7 @@ public abstract class ElementResolver protected(
         ForceResolveUtil.forceResolveAllContents(constructorDescriptor)
 
         val bodyResolver = createBodyResolver(resolveSession, trace, file, statementFilter)
-        bodyResolver.resolveSecondaryConstructorBody(createEmptyContext(), trace, constructor, constructorDescriptor, scope)
+        bodyResolver.resolveSecondaryConstructorBody(DataFlowInfo.EMPTY, trace, constructor, constructorDescriptor, scope)
     }
 
     private fun constructorAdditionalResolve(resolveSession: ResolveSession, klass: JetClass, trace: BindingTrace, file: JetFile, statementFilter: StatementFilter) {
@@ -472,7 +473,7 @@ public abstract class ElementResolver protected(
 
         override fun getScripts(): Map<JetScript, ScriptDescriptor> = mapOf()
 
-        override fun getOuterDataFlowInfo() = DataFlowInfo.EMPTY
+        override fun getOuterDataFlowInfo(): DataFlowInfo = DataFlowInfo.EMPTY
 
         override fun getTopDownAnalysisMode() = topDownAnalysisMode
     }
