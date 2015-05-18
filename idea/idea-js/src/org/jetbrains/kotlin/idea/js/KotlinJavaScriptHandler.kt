@@ -20,7 +20,7 @@ import com.intellij.openapi.vfs.impl.ArchiveHandler
 import com.intellij.openapi.vfs.impl.ArchiveHandler.EntryInfo
 import com.intellij.util.ArrayUtil
 import gnu.trove.THashMap
-import org.jetbrains.kotlin.serialization.js.forEachFileEntry
+import org.jetbrains.kotlin.serialization.js.forEachFile
 import org.jetbrains.kotlin.utils.KotlinJavascriptMetadataUtils
 
 public open class KotlinJavaScriptHandler(path: String) : ArchiveHandler(path) {
@@ -31,7 +31,7 @@ public open class KotlinJavaScriptHandler(path: String) : ArchiveHandler(path) {
 
         for(metadata in KotlinJavascriptMetadataUtils.loadMetadata(getFile())) {
             val moduleName = metadata.moduleName
-            metadata.forEachFileEntry {
+            metadata.forEachFile {
                 filePath, fileContent -> getOrCreate(moduleName + "/" + filePath, false, map, fileContent)
             }
         }

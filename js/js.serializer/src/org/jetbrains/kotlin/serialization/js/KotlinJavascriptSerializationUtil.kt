@@ -205,7 +205,7 @@ public object KotlinJavascriptSerializationUtil {
             KotlinJavascriptSerializationUtil.contentMapToByteArray(this.toContentMap())
 }
 
-public fun KotlinJavascriptMetadata.forEachFileEntry(operation: (filePath: String, fileContent: ByteArray) -> Unit): Unit =
+public fun KotlinJavascriptMetadata.forEachFile(operation: (filePath: String, fileContent: ByteArray) -> Unit): Unit =
         this.body.toContentMap().forEach { operation(it.getKey(), it.getValue()) }
 
 private fun ByteArray.toContentMap(): Map<String, ByteArray> {
