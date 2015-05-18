@@ -22,14 +22,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.cli.jvm.compiler.CliLightClassGenerationSupport;
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
 import org.jetbrains.kotlin.context.ContextPackage;
-import org.jetbrains.kotlin.context.GlobalContextImpl;
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.name.Name;
 import org.jetbrains.kotlin.name.SpecialNames;
 import org.jetbrains.kotlin.psi.JetFile;
 import org.jetbrains.kotlin.resolve.BindingTrace;
-import org.jetbrains.kotlin.resolve.TopDownAnalysisParameters;
+import org.jetbrains.kotlin.resolve.TopDownAnalysisMode;
 import org.jetbrains.kotlin.resolve.jvm.TopDownAnalyzerFacadeForJVM;
 
 import java.util.Collections;
@@ -56,14 +55,9 @@ public class LazyResolveTestUtil {
     public static ModuleDescriptor resolve(@NotNull Project project, @NotNull BindingTrace trace, @NotNull List<JetFile> sourceFiles) {
         ModuleDescriptorImpl module = TopDownAnalyzerFacadeForJVM.createSealedJavaModule();
 
-        GlobalContextImpl globalContext = ContextPackage.GlobalContext();
-        TopDownAnalysisParameters params = TopDownAnalysisParameters.create(
-                globalContext.getStorageManager(),
-                globalContext.getExceptionTracker(),
-                false, false
+        TopDownAnalyzerFacadeForJVM.analyzeFilesWithJavaIntegrationNoIncremental(
+                ContextPackage.ModuleContext(module, project), sourceFiles, trace, TopDownAnalysisMode.TopLevelDeclarations
         );
-
-        TopDownAnalyzerFacadeForJVM.analyzeFilesWithJavaIntegrationNoIncremental(project, sourceFiles, trace, params, module);
 
         return module;
     }

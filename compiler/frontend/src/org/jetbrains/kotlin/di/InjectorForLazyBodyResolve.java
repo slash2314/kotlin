@@ -16,22 +16,19 @@
 
 package org.jetbrains.kotlin.di;
 
+import org.jetbrains.kotlin.context.ModuleContext;
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
+import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import com.intellij.openapi.project.Project;
-import org.jetbrains.kotlin.context.GlobalContext;
 import org.jetbrains.kotlin.storage.StorageManager;
 import org.jetbrains.kotlin.resolve.lazy.KotlinCodeAnalyzer;
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
-import org.jetbrains.kotlin.resolve.lazy.ScopeProvider;
+import org.jetbrains.kotlin.resolve.lazy.FileScopeProvider;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 import org.jetbrains.kotlin.resolve.AdditionalCheckerProvider;
 import org.jetbrains.kotlin.resolve.validation.SymbolUsageValidator;
 import org.jetbrains.kotlin.types.DynamicTypesSettings;
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import org.jetbrains.kotlin.resolve.LazyTopDownAnalyzerForTopLevel;
-import org.jetbrains.kotlin.resolve.lazy.ScopeProvider.AdditionalFileScopeProvider;
-import org.jetbrains.kotlin.resolve.lazy.DeclarationScopeProviderImpl;
-import org.jetbrains.kotlin.resolve.lazy.LazyDeclarationResolver;
 import org.jetbrains.kotlin.resolve.LazyTopDownAnalyzer;
 import org.jetbrains.kotlin.resolve.BodyResolver;
 import org.jetbrains.kotlin.resolve.AnnotationResolver;
@@ -64,6 +61,8 @@ import org.jetbrains.kotlin.resolve.ModifiersChecker;
 import org.jetbrains.kotlin.resolve.FunctionAnalyzerExtension;
 import org.jetbrains.kotlin.resolve.ScriptBodyResolver;
 import org.jetbrains.kotlin.resolve.DeclarationResolver;
+import org.jetbrains.kotlin.resolve.lazy.DeclarationScopeProviderImpl;
+import org.jetbrains.kotlin.resolve.lazy.LazyDeclarationResolver;
 import org.jetbrains.kotlin.resolve.OverloadResolver;
 import org.jetbrains.kotlin.resolve.OverrideResolver;
 import org.jetbrains.kotlin.resolve.varianceChecker.VarianceChecker;
@@ -74,22 +73,19 @@ import javax.annotation.PreDestroy;
 @SuppressWarnings("all")
 public class InjectorForLazyBodyResolve {
 
+    private final ModuleContext moduleContext;
+    private final KotlinBuiltIns kotlinBuiltIns;
+    private final ModuleDescriptor moduleDescriptor;
+    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final Project project;
-    private final GlobalContext globalContext;
     private final StorageManager storageManager;
     private final KotlinCodeAnalyzer analyzer;
-    private final ModuleDescriptor moduleDescriptor;
-    private final ScopeProvider scopeProvider;
+    private final FileScopeProvider fileScopeProvider;
     private final BindingTrace bindingTrace;
     private final AdditionalCheckerProvider additionalCheckerProvider;
     private final SymbolUsageValidator symbolUsageValidator;
     private final DynamicTypesSettings dynamicTypesSettings;
-    private final KotlinBuiltIns kotlinBuiltIns;
-    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final LazyTopDownAnalyzerForTopLevel lazyTopDownAnalyzerForTopLevel;
-    private final AdditionalFileScopeProvider additionalFileScopeProvider;
-    private final DeclarationScopeProviderImpl declarationScopeProvider;
-    private final LazyDeclarationResolver lazyDeclarationResolver;
     private final LazyTopDownAnalyzer lazyTopDownAnalyzer;
     private final BodyResolver bodyResolver;
     private final AnnotationResolver annotationResolver;
@@ -122,34 +118,33 @@ public class InjectorForLazyBodyResolve {
     private final FunctionAnalyzerExtension functionAnalyzerExtension;
     private final ScriptBodyResolver scriptBodyResolver;
     private final DeclarationResolver declarationResolver;
+    private final DeclarationScopeProviderImpl declarationScopeProvider;
+    private final LazyDeclarationResolver lazyDeclarationResolver;
     private final OverloadResolver overloadResolver;
     private final OverrideResolver overrideResolver;
     private final VarianceChecker varianceChecker;
 
     public InjectorForLazyBodyResolve(
-        @NotNull Project project,
-        @NotNull GlobalContext globalContext,
+        @NotNull ModuleContext moduleContext,
         @NotNull KotlinCodeAnalyzer analyzer,
+        @NotNull FileScopeProvider fileScopeProvider,
         @NotNull BindingTrace bindingTrace,
         @NotNull AdditionalCheckerProvider additionalCheckerProvider,
         @NotNull DynamicTypesSettings dynamicTypesSettings
     ) {
-        this.project = project;
-        this.globalContext = globalContext;
-        this.storageManager = globalContext.getStorageManager();
+        this.moduleContext = moduleContext;
+        this.kotlinBuiltIns = moduleContext.getBuiltIns();
+        this.moduleDescriptor = moduleContext.getModule();
+        this.platformToKotlinClassMap = moduleContext.getPlatformToKotlinClassMap();
+        this.project = moduleContext.getProject();
+        this.storageManager = moduleContext.getStorageManager();
         this.analyzer = analyzer;
-        this.moduleDescriptor = analyzer.getModuleDescriptor();
-        this.scopeProvider = analyzer.getScopeProvider();
+        this.fileScopeProvider = fileScopeProvider;
         this.bindingTrace = bindingTrace;
         this.additionalCheckerProvider = additionalCheckerProvider;
         this.symbolUsageValidator = additionalCheckerProvider.getSymbolUsageValidator();
         this.dynamicTypesSettings = dynamicTypesSettings;
-        this.kotlinBuiltIns = moduleDescriptor.getBuiltIns();
-        this.platformToKotlinClassMap = moduleDescriptor.getPlatformToKotlinClassMap();
         this.lazyTopDownAnalyzerForTopLevel = new LazyTopDownAnalyzerForTopLevel();
-        this.additionalFileScopeProvider = new AdditionalFileScopeProvider();
-        this.lazyDeclarationResolver = new LazyDeclarationResolver(globalContext, bindingTrace);
-        this.declarationScopeProvider = new DeclarationScopeProviderImpl(lazyDeclarationResolver);
         this.lazyTopDownAnalyzer = new LazyTopDownAnalyzer();
         this.bodyResolver = new BodyResolver();
         this.annotationResolver = new AnnotationResolver();
@@ -182,6 +177,8 @@ public class InjectorForLazyBodyResolve {
         this.functionAnalyzerExtension = new FunctionAnalyzerExtension();
         this.scriptBodyResolver = new ScriptBodyResolver();
         this.declarationResolver = new DeclarationResolver();
+        this.lazyDeclarationResolver = new LazyDeclarationResolver(moduleContext, bindingTrace);
+        this.declarationScopeProvider = new DeclarationScopeProviderImpl(lazyDeclarationResolver);
         this.overloadResolver = new OverloadResolver();
         this.overrideResolver = new OverrideResolver();
         this.varianceChecker = new VarianceChecker(bindingTrace);
@@ -189,15 +186,10 @@ public class InjectorForLazyBodyResolve {
         this.lazyTopDownAnalyzerForTopLevel.setKotlinCodeAnalyzer(analyzer);
         this.lazyTopDownAnalyzerForTopLevel.setLazyTopDownAnalyzer(lazyTopDownAnalyzer);
 
-        declarationScopeProvider.setFileScopeProvider(scopeProvider);
-
-        lazyDeclarationResolver.setDeclarationScopeProvider(declarationScopeProvider);
-        lazyDeclarationResolver.setTopLevelDescriptorProvider(analyzer);
-
         lazyTopDownAnalyzer.setBodyResolver(bodyResolver);
         lazyTopDownAnalyzer.setDeclarationResolver(declarationResolver);
         lazyTopDownAnalyzer.setDeclarationScopeProvider(declarationScopeProvider);
-        lazyTopDownAnalyzer.setFileScopeProvider(scopeProvider);
+        lazyTopDownAnalyzer.setFileScopeProvider(fileScopeProvider);
         lazyTopDownAnalyzer.setLazyDeclarationResolver(lazyDeclarationResolver);
         lazyTopDownAnalyzer.setModuleDescriptor(moduleDescriptor);
         lazyTopDownAnalyzer.setOverloadResolver(overloadResolver);
@@ -247,7 +239,7 @@ public class InjectorForLazyBodyResolve {
         expressionTypingComponents.setExpressionTypingServices(expressionTypingServices);
         expressionTypingComponents.setForLoopConventionsChecker(forLoopConventionsChecker);
         expressionTypingComponents.setFunctionDescriptorResolver(functionDescriptorResolver);
-        expressionTypingComponents.setGlobalContext(globalContext);
+        expressionTypingComponents.setGlobalContext(moduleContext);
         expressionTypingComponents.setLocalClassifierAnalyzer(localClassifierAnalyzer);
         expressionTypingComponents.setMultiDeclarationResolver(multiDeclarationResolver);
         expressionTypingComponents.setPlatformToKotlinClassMap(platformToKotlinClassMap);
@@ -291,6 +283,11 @@ public class InjectorForLazyBodyResolve {
 
         declarationResolver.setAnnotationResolver(annotationResolver);
         declarationResolver.setTrace(bindingTrace);
+
+        declarationScopeProvider.setFileScopeProvider(fileScopeProvider);
+
+        lazyDeclarationResolver.setDeclarationScopeProvider(declarationScopeProvider);
+        lazyDeclarationResolver.setTopLevelDescriptorProvider(analyzer);
 
         overloadResolver.setTrace(bindingTrace);
 

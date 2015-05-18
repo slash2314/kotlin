@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.analyzer.AnalysisResult;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.context.GlobalContext;
+import org.jetbrains.kotlin.context.ModuleContext;
 import org.jetbrains.kotlin.descriptors.ClassDescriptor;
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
@@ -37,7 +37,7 @@ import org.jetbrains.kotlin.psi.JetFile;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 import org.jetbrains.kotlin.resolve.DescriptorUtils;
 import org.jetbrains.kotlin.resolve.ImportPath;
-import org.jetbrains.kotlin.resolve.TopDownAnalysisParameters;
+import org.jetbrains.kotlin.resolve.TopDownAnalysisMode;
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory;
 
 import java.util.ArrayList;
@@ -66,62 +66,47 @@ public enum TopDownAnalyzerFacadeForJVM {
         return list;
     }
 
-    private TopDownAnalyzerFacadeForJVM() {
-    }
-
     @NotNull
     public static AnalysisResult analyzeFilesWithJavaIntegrationNoIncremental(
-            @NotNull Project project,
+            @NotNull ModuleContext moduleContext,
             @NotNull Collection<JetFile> files,
             @NotNull BindingTrace trace,
-            @NotNull TopDownAnalysisParameters topDownAnalysisParameters,
-            @NotNull ModuleDescriptorImpl module
+            @NotNull TopDownAnalysisMode topDownAnalysisMode
     ) {
-        return analyzeFilesWithJavaIntegration(project, files, trace, topDownAnalysisParameters, module, null, null);
+        return analyzeFilesWithJavaIntegration(moduleContext, files, trace, topDownAnalysisMode, null, null);
     }
 
     @NotNull
     public static AnalysisResult analyzeFilesWithJavaIntegrationWithCustomContext(
-            @NotNull Project project,
-            @NotNull GlobalContext globalContext,
+            @NotNull ModuleContext moduleContext,
             @NotNull Collection<JetFile> files,
             @NotNull BindingTrace trace,
-            @NotNull ModuleDescriptorImpl module,
             @Nullable List<String> moduleIds,
             @Nullable IncrementalCacheProvider incrementalCacheProvider
     ) {
-        TopDownAnalysisParameters topDownAnalysisParameters = TopDownAnalysisParameters.create(
-                globalContext.getStorageManager(),
-                globalContext.getExceptionTracker(),
-                false,
-                false
-        );
-
         return analyzeFilesWithJavaIntegration(
-                project, files, trace, topDownAnalysisParameters, module,
-                moduleIds, incrementalCacheProvider);
+                moduleContext, files, trace, TopDownAnalysisMode.TopLevelDeclarations, moduleIds, incrementalCacheProvider
+        );
     }
 
     @NotNull
     private static AnalysisResult analyzeFilesWithJavaIntegration(
-            Project project,
-            Collection<JetFile> files,
-            BindingTrace trace,
-            TopDownAnalysisParameters topDownAnalysisParameters,
-            ModuleDescriptorImpl module,
+            @NotNull ModuleContext moduleContext,
+            @NotNull Collection<JetFile> files,
+            @NotNull BindingTrace trace,
+            @NotNull TopDownAnalysisMode topDownAnalysisMode,
             @Nullable List<String> moduleIds,
             @Nullable IncrementalCacheProvider incrementalCacheProvider
     ) {
+        Project project = moduleContext.getProject();
         List<JetFile> allFiles = JvmAnalyzerFacade.getAllFilesToAnalyze(project, null, files);
 
         FileBasedDeclarationProviderFactory providerFactory =
-                new FileBasedDeclarationProviderFactory(topDownAnalysisParameters.getStorageManager(), allFiles);
+                new FileBasedDeclarationProviderFactory(moduleContext.getStorageManager(), allFiles);
 
         InjectorForTopDownAnalyzerForJvm injector = new InjectorForTopDownAnalyzerForJvm(
-                project,
-                topDownAnalysisParameters,
+                moduleContext,
                 trace,
-                module,
                 providerFactory,
                 GlobalSearchScope.allScope(project)
         );
@@ -135,7 +120,7 @@ public enum TopDownAnalyzerFacadeForJVM {
 
                     additionalProviders.add(
                             new IncrementalPackageFragmentProvider(
-                                    files, module, topDownAnalysisParameters.getStorageManager(),
+                                    files, moduleContext.getModule(), moduleContext.getStorageManager(),
                                     injector.getDeserializationComponentsForJava().getComponents(),
                                     incrementalCache, moduleId
                             )
@@ -144,8 +129,8 @@ public enum TopDownAnalyzerFacadeForJVM {
             }
             additionalProviders.add(injector.getJavaDescriptorResolver().getPackageFragmentProvider());
 
-            injector.getLazyTopDownAnalyzerForTopLevel().analyzeFiles(topDownAnalysisParameters, allFiles, additionalProviders);
-            return AnalysisResult.success(trace.getBindingContext(), module);
+            injector.getLazyTopDownAnalyzerForTopLevel().analyzeFiles(topDownAnalysisMode, allFiles, additionalProviders);
+            return AnalysisResult.success(trace.getBindingContext(), moduleContext.getModule());
         }
         finally {
             injector.destroy();

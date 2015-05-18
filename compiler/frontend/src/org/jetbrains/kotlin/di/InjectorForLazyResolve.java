@@ -16,12 +16,12 @@
 
 package org.jetbrains.kotlin.di;
 
-import com.intellij.openapi.project.Project;
-import org.jetbrains.kotlin.context.GlobalContext;
-import org.jetbrains.kotlin.storage.StorageManager;
-import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
+import org.jetbrains.kotlin.context.ModuleContext;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
+import com.intellij.openapi.project.Project;
+import org.jetbrains.kotlin.storage.StorageManager;
 import org.jetbrains.kotlin.resolve.lazy.declarations.DeclarationProviderFactory;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 import org.jetbrains.kotlin.resolve.AdditionalCheckerProvider;
@@ -65,12 +65,12 @@ import javax.annotation.PreDestroy;
 @SuppressWarnings("all")
 public class InjectorForLazyResolve {
 
-    private final Project project;
-    private final GlobalContext globalContext;
-    private final StorageManager storageManager;
-    private final ModuleDescriptorImpl moduleDescriptor;
+    private final ModuleContext moduleContext;
     private final KotlinBuiltIns kotlinBuiltIns;
+    private final ModuleDescriptor moduleDescriptor;
     private final PlatformToKotlinClassMap platformToKotlinClassMap;
+    private final Project project;
+    private final StorageManager storageManager;
     private final DeclarationProviderFactory declarationProviderFactory;
     private final BindingTrace bindingTrace;
     private final AdditionalCheckerProvider additionalCheckerProvider;
@@ -109,26 +109,24 @@ public class InjectorForLazyResolve {
     private final AdditionalFileScopeProvider additionalFileScopeProvider;
 
     public InjectorForLazyResolve(
-        @NotNull Project project,
-        @NotNull GlobalContext globalContext,
-        @NotNull ModuleDescriptorImpl moduleDescriptor,
+        @NotNull ModuleContext moduleContext,
         @NotNull DeclarationProviderFactory declarationProviderFactory,
         @NotNull BindingTrace bindingTrace,
         @NotNull AdditionalCheckerProvider additionalCheckerProvider,
         @NotNull DynamicTypesSettings dynamicTypesSettings
     ) {
-        this.project = project;
-        this.globalContext = globalContext;
-        this.storageManager = globalContext.getStorageManager();
-        this.moduleDescriptor = moduleDescriptor;
-        this.kotlinBuiltIns = moduleDescriptor.getBuiltIns();
-        this.platformToKotlinClassMap = moduleDescriptor.getPlatformToKotlinClassMap();
+        this.moduleContext = moduleContext;
+        this.kotlinBuiltIns = moduleContext.getBuiltIns();
+        this.moduleDescriptor = moduleContext.getModule();
+        this.platformToKotlinClassMap = moduleContext.getPlatformToKotlinClassMap();
+        this.project = moduleContext.getProject();
+        this.storageManager = moduleContext.getStorageManager();
         this.declarationProviderFactory = declarationProviderFactory;
         this.bindingTrace = bindingTrace;
         this.additionalCheckerProvider = additionalCheckerProvider;
         this.symbolUsageValidator = additionalCheckerProvider.getSymbolUsageValidator();
         this.dynamicTypesSettings = dynamicTypesSettings;
-        this.resolveSession = new ResolveSession(project, globalContext, moduleDescriptor, declarationProviderFactory, bindingTrace);
+        this.resolveSession = new ResolveSession(project, moduleContext, moduleDescriptor, declarationProviderFactory, bindingTrace);
         this.scopeProvider = new ScopeProvider(getResolveSession());
         this.lazyResolveToken = new LazyResolveToken();
         this.annotationResolver = new AnnotationResolver();
@@ -155,7 +153,7 @@ public class InjectorForLazyResolve {
         this.callCompleter = new CallCompleter(argumentTypeResolver, candidateResolver);
         this.taskPrioritizer = new TaskPrioritizer(storageManager);
         this.jetImportsFactory = new JetImportsFactory();
-        this.lazyDeclarationResolver = new LazyDeclarationResolver(globalContext, bindingTrace);
+        this.lazyDeclarationResolver = new LazyDeclarationResolver(moduleContext, bindingTrace);
         this.declarationScopeProvider = new DeclarationScopeProviderImpl(lazyDeclarationResolver);
         this.scriptBodyResolver = new ScriptBodyResolver();
         this.additionalFileScopeProvider = new AdditionalFileScopeProvider();
@@ -202,7 +200,7 @@ public class InjectorForLazyResolve {
         expressionTypingComponents.setExpressionTypingServices(expressionTypingServices);
         expressionTypingComponents.setForLoopConventionsChecker(forLoopConventionsChecker);
         expressionTypingComponents.setFunctionDescriptorResolver(functionDescriptorResolver);
-        expressionTypingComponents.setGlobalContext(globalContext);
+        expressionTypingComponents.setGlobalContext(moduleContext);
         expressionTypingComponents.setLocalClassifierAnalyzer(localClassifierAnalyzer);
         expressionTypingComponents.setMultiDeclarationResolver(multiDeclarationResolver);
         expressionTypingComponents.setPlatformToKotlinClassMap(platformToKotlinClassMap);

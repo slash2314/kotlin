@@ -14,24 +14,9 @@
  * limitations under the License.
  */
 
-package kotlin
+package org.jetbrains.kotlin.resolve
 
-/**
- * An interface implemented by companion objects of floating-point types.
- */
-public interface FloatingPointConstants<T> {
-    /**
-     * A constant holding the positive infinity value.
-     */
-    public val POSITIVE_INFINITY: T
-
-    /**
-     * A constant holding the negative infinity value.
-     */
-    public val NEGATIVE_INFINITY: T
-
-    /**
-     * A constant holding the "not a number" value.
-     */
-    public val NaN: T
+public enum class TopDownAnalysisMode(public val isLocalDeclarations: Boolean) {
+    LocalDeclarations : TopDownAnalysisMode(true)
+    TopLevelDeclarations : TopDownAnalysisMode(false)
 }
