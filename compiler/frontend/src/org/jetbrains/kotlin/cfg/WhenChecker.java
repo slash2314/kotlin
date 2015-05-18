@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.resolve.BindingContext;
 import org.jetbrains.kotlin.resolve.BindingTrace;
 import org.jetbrains.kotlin.resolve.CompileTimeConstantUtils;
 import org.jetbrains.kotlin.resolve.bindingContextUtil.BindingContextUtilPackage;
+import org.jetbrains.kotlin.types.DelegatingFlexibleType;
 import org.jetbrains.kotlin.types.JetType;
 import org.jetbrains.kotlin.types.TypeUtils;
 
@@ -147,7 +148,8 @@ public final class WhenChecker {
         else {
             exhaustive = false;
         }
-        if (exhaustive && (!TypeUtils.isNullableType(type) || containsNullCase(expression, trace))) {
+        // instanceof DelegatingFlexibleType is under consideration...
+        if (exhaustive && (!TypeUtils.isNullableType(type) || containsNullCase(expression, trace) || type instanceof DelegatingFlexibleType)) {
             trace.record(BindingContext.EXHAUSTIVE_WHEN, expression);
             return true;
         }

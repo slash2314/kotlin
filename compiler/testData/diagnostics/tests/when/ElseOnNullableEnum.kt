@@ -22,7 +22,7 @@ fun withNullableNothing(e: E?) = when (e) {
     nullableNothing() -> null
 }
 
-fun platformType() = <!NO_ELSE_IN_WHEN!>when<!> (J.foo()) {
+fun platformType() = when (J.foo()) {
     E.A -> 7
     E.B -> 8
 }

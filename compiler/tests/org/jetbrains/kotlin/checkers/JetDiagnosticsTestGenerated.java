@@ -12933,6 +12933,12 @@ public class JetDiagnosticsTestGenerated extends AbstractJetDiagnosticsTest {
                 doTest(fileName);
             }
 
+            @TestMetadata("ExhaustivePlatformEnum.kt")
+            public void testExhaustivePlatformEnum() throws Exception {
+                String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/when/ExhaustivePlatformEnum.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("ExhaustiveReturn.kt")
             public void testExhaustiveReturn() throws Exception {
                 String fileName = JetTestUtils.navigationMetadata("compiler/testData/diagnostics/tests/when/ExhaustiveReturn.kt");
