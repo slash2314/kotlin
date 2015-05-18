@@ -30,33 +30,12 @@ import org.jetbrains.kotlin.serialization.js.KotlinJavascriptAnnotationAndConsta
 import org.jetbrains.kotlin.serialization.js.KotlinJavascriptSerializedResourcePaths
 import org.jetbrains.kotlin.serialization.js.toPackageData
 import java.io.ByteArrayInputStream
-import java.util.Collections
 
 public class KotlinJavaScriptDeserializerForDecompiler(
         classFile: VirtualFile
 ) : DeserializerForDecompilerBase(classFile.getParent()!!, JsMetaFileUtils.getPackageFqName(classFile)) {
 
-    override fun resolveDeclarationsInPackage(packageFqName: FqName): Collection<DeclarationDescriptor> {
-        assert(packageFqName == directoryPackageFqName, "Was called for $packageFqName but only $directoryPackageFqName is expected.")
-        val file = metaFileFinder.findKotlinJavascriptMetaFile(PackageClassUtils.getPackageClassId(packageFqName))
-        if (file == null) {
-            LOG.error("Could not read data for $packageFqName")
-            return Collections.emptyList()
-        }
-
-        val content = file.contentsToByteArray(false)
-        val packageData = content.toPackageData(nameResolver)
-
-        val membersScope = DeserializedPackageMemberScope(
-                createDummyPackageFragment(packageFqName),
-                packageData.getPackageProto(),
-                packageData.getNameResolver(),
-                deserializationComponents
-        ) { listOf() }
-        return membersScope.getDescriptors()
-    }
-
-    private val nameResolver: NameResolver = run {
+    private val nameResolver = run {
         val moduleDirectory = JsMetaFileUtils.getModuleDirectory(packageDirectory)
         val stringsFileName = KotlinJavascriptSerializedResourcePaths.getStringTableFilePath(directoryPackageFqName)
         val stringsFile = moduleDirectory.findFileByRelativePath(stringsFileName)
@@ -70,10 +49,30 @@ public class KotlinJavaScriptDeserializerForDecompiler(
 
     override val annotationAndConstantLoader = KotlinJavascriptAnnotationAndConstantLoader(moduleDescriptor)
 
-    override val deserializationComponents: DeserializationComponents = DeserializationComponents(
+    override val deserializationComponents = DeserializationComponents(
             storageManager, moduleDescriptor, classDataFinder, annotationAndConstantLoader, packageFragmentProvider,
             ResolveEverythingToKotlinAnyLocalClassResolver, FlexibleTypeCapabilitiesDeserializer.Dynamic
     )
+
+    override fun resolveDeclarationsInPackage(packageFqName: FqName): Collection<DeclarationDescriptor> {
+        assert(packageFqName == directoryPackageFqName, "Was called for $packageFqName but only $directoryPackageFqName is expected.")
+        val file = metaFileFinder.findKotlinJavascriptMetaFile(PackageClassUtils.getPackageClassId(packageFqName))
+        if (file == null) {
+            LOG.error("Could not read data for $packageFqName")
+            return emptyList()
+        }
+
+        val content = file.contentsToByteArray(false)
+        val packageData = content.toPackageData(nameResolver)
+
+        val membersScope = DeserializedPackageMemberScope(
+                createDummyPackageFragment(packageFqName),
+                packageData.getPackageProto(),
+                packageData.getNameResolver(),
+                deserializationComponents
+        ) { emptyList() }
+        return membersScope.getDescriptors()
+    }
 
     companion object {
         private val LOG = Logger.getInstance(javaClass<KotlinJavaScriptDeserializerForDecompiler>())
