@@ -43,6 +43,8 @@ public class SimpleTestMethodModel implements TestMethodModel {
     @NotNull
     private final TargetBackend targetBackend;
 
+    private static final String DIRECTIVES_FILE_NAME = "directives.txt";
+
     public SimpleTestMethodModel(
             @NotNull File rootDir,
             @NotNull File file,
@@ -75,11 +77,10 @@ public class SimpleTestMethodModel implements TestMethodModel {
         try {
             String fileText;
             if (file.isDirectory()) {
-                String fileName =file.getName();
-                File realFile = new File(file, fileName + ".kt");
-                if (!realFile.exists()) return true;
+                File directivesFile = new File(file, DIRECTIVES_FILE_NAME);
+                if (!directivesFile.exists()) return false;
 
-                fileText = FileUtil.loadFile(realFile);
+                fileText = FileUtil.loadFile(directivesFile);
             }
             else {
                 fileText = FileUtil.loadFile(file);
