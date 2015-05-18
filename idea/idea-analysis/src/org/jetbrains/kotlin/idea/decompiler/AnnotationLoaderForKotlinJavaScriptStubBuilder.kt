@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.jetbrains.kotlin.decompiler
+package org.jetbrains.kotlin.idea.decompiler
 
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.serialization.ProtoBuf

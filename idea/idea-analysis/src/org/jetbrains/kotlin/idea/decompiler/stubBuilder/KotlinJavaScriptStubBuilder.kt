@@ -22,7 +22,7 @@ import com.intellij.psi.compiled.ClsStubBuilder
 import com.intellij.psi.impl.compiled.ClassFileStubBuilder
 import com.intellij.psi.stubs.PsiFileStub
 import com.intellij.util.indexing.FileContent
-import org.jetbrains.kotlin.decompiler.AnnotationLoaderForKotlinJavaScriptStubBuilder
+import org.jetbrains.kotlin.idea.decompiler.AnnotationLoaderForKotlinJavaScriptStubBuilder
 import org.jetbrains.kotlin.idea.decompiler.isKotlinJavaScriptInternalCompiledFile
 import org.jetbrains.kotlin.idea.decompiler.navigation.JsMetaFileUtils
 import org.jetbrains.kotlin.idea.decompiler.textBuilder.DirectoryBasedKotlinJavaScriptDataFinder
