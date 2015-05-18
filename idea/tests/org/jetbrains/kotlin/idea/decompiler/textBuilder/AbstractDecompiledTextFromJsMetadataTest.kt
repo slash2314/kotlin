@@ -17,37 +17,26 @@
 package org.jetbrains.kotlin.idea.decompiler.textBuilder
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.LightPlatformTestCase
-import com.intellij.testFramework.LightProjectDescriptor
-import com.intellij.testFramework.UsefulTestCase
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.decompiler.KotlinJavascriptMetaFile
 import org.jetbrains.kotlin.idea.js.KotlinJavaScriptLibraryManager
-import org.jetbrains.kotlin.idea.test.*
+import org.jetbrains.kotlin.idea.test.ModuleKind
+import org.jetbrains.kotlin.idea.test.configureAs
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinderFactory
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.psiUtil.getElementTextWithContext
 import org.junit.Assert
 
-public abstract class AbstractDecompiledTextFromJsMetadataTest : JetLightCodeInsightFixtureTestCase() {
+public abstract class AbstractDecompiledTextFromJsMetadataTest : AbstractDecompiledTextBaseTest(true) {
 
-    private val TEST_DATA_PATH = PluginTestCaseBase.getTestDataPathBase() + "/decompiler/decompiledText"
+    protected override fun getFileToDecompile(): VirtualFile = getJsMetaFile("test", getTestName(false))!!
 
-    public fun doTest(path: String) {
-        val classFile = getJsMetaFile("test", getTestName(false))!!
-        val clsFile = PsiManager.getInstance(getProject()).findFile(classFile)
-        Assert.assertTrue("Expecting decompiled kotlin javascript file, was: " + clsFile!!.javaClass, clsFile is KotlinJavascriptMetaFile)
-        UsefulTestCase.assertSameLinesWithFile(path.substring(0, path.length() - 1) + ".expected.kt", clsFile.getText())
-        checkThatFileWasParsedCorrectly(clsFile)
-    }
+    protected override fun checkPsiFile(psiFile: PsiFile) =
+            Assert.assertTrue("Expecting decompiled kotlin javascript file, was: " + psiFile.javaClass, psiFile is KotlinJavascriptMetaFile)
 
     override fun setUp() {
         super.setUp()
@@ -74,20 +63,5 @@ public abstract class AbstractDecompiledTextFromJsMetadataTest : JetLightCodeIns
         val metaFile = virtualFileFinder.findVirtualFileWithKotlinJsMetadata(classId)
         TestCase.assertNotNull(metaFile)
         return metaFile
-    }
-
-    override fun getProjectDescriptor(): LightProjectDescriptor {
-        if (isAllFilesPresentInTest()) {
-            return JetLightProjectDescriptor.INSTANCE
-        }
-        return JdkAndMockLibraryProjectDescriptor(TEST_DATA_PATH + "/" + getTestName(false), false, true)
-    }
-
-    private fun checkThatFileWasParsedCorrectly(clsFile: PsiFile) {
-        clsFile.accept(object : PsiRecursiveElementVisitor() {
-            override fun visitErrorElement(element: PsiErrorElement) {
-                Assert.fail("Decompiled file should not contain error elements!\n${element.getElementTextWithContext()}")
-            }
-        })
     }
 }
