@@ -17,11 +17,10 @@
 package org.jetbrains.kotlin.js.analyze;
 
 import com.google.common.collect.ImmutableList;
-import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
 import org.jetbrains.kotlin.context.ContextPackage;
-import org.jetbrains.kotlin.context.GlobalContextImpl;
+import org.jetbrains.kotlin.context.ModuleContext;
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
 import org.jetbrains.kotlin.di.InjectorForTopDownAnalyzerForJs;
@@ -75,19 +74,14 @@ public final class TopDownAnalyzerFacadeForJS {
             @NotNull ModuleDescriptorImpl module,
             @NotNull Config config
     ) {
-        Project project = config.getProject();
-
-        GlobalContextImpl globalContext = ContextPackage.GlobalContext();
-        TopDownAnalysisParameters topDownAnalysisParameters = TopDownAnalysisParameters.create(
-                globalContext.getStorageManager(), globalContext.getExceptionTracker(), false, false);
-
+        ModuleContext context = ContextPackage.ModuleContext(module, config.getProject());
         Collection<JetFile> allFiles = Config.withJsLibAdded(files, config);
 
         InjectorForTopDownAnalyzerForJs injector = new InjectorForTopDownAnalyzerForJs(
-                project, topDownAnalysisParameters, trace, module,
-                new FileBasedDeclarationProviderFactory(topDownAnalysisParameters.getStorageManager(), allFiles));
+                context, trace, new FileBasedDeclarationProviderFactory(context.getStorageManager(), allFiles)
+        );
         try {
-            injector.getLazyTopDownAnalyzerForTopLevel().analyzeFiles(topDownAnalysisParameters, files,
+            injector.getLazyTopDownAnalyzerForTopLevel().analyzeFiles(TopDownAnalysisMode.TopLevelDeclarations, files,
                                                            Collections.<PackageFragmentProvider>emptyList());
             return JsAnalysisResult.success(trace, module);
         }

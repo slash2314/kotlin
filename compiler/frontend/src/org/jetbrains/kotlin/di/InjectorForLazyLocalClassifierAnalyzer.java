@@ -16,13 +16,13 @@
 
 package org.jetbrains.kotlin.di;
 
+import org.jetbrains.kotlin.context.ModuleContext;
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
+import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import com.intellij.openapi.project.Project;
-import org.jetbrains.kotlin.context.GlobalContext;
 import org.jetbrains.kotlin.storage.StorageManager;
 import org.jetbrains.kotlin.resolve.BindingTrace;
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import org.jetbrains.kotlin.resolve.AdditionalCheckerProvider;
 import org.jetbrains.kotlin.resolve.validation.SymbolUsageValidator;
 import org.jetbrains.kotlin.types.DynamicTypesSettings;
@@ -73,13 +73,13 @@ import javax.annotation.PreDestroy;
 @SuppressWarnings("all")
 public class InjectorForLazyLocalClassifierAnalyzer {
 
+    private final ModuleContext moduleContext;
+    private final KotlinBuiltIns kotlinBuiltIns;
+    private final ModuleDescriptor moduleDescriptor;
+    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final Project project;
-    private final GlobalContext globalContext;
     private final StorageManager storageManager;
     private final BindingTrace bindingTrace;
-    private final ModuleDescriptor module;
-    private final KotlinBuiltIns kotlinBuiltIns;
-    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final AdditionalCheckerProvider additionalCheckerProvider;
     private final SymbolUsageValidator symbolUsageValidator;
     private final DynamicTypesSettings dynamicTypesSettings;
@@ -125,21 +125,19 @@ public class InjectorForLazyLocalClassifierAnalyzer {
     private final VarianceChecker varianceChecker;
 
     public InjectorForLazyLocalClassifierAnalyzer(
-        @NotNull Project project,
-        @NotNull GlobalContext globalContext,
+        @NotNull ModuleContext moduleContext,
         @NotNull BindingTrace bindingTrace,
-        @NotNull ModuleDescriptor module,
         @NotNull AdditionalCheckerProvider additionalCheckerProvider,
         @NotNull DynamicTypesSettings dynamicTypesSettings,
         @NotNull LocalClassDescriptorHolder localClassDescriptorHolder
     ) {
-        this.project = project;
-        this.globalContext = globalContext;
-        this.storageManager = globalContext.getStorageManager();
+        this.moduleContext = moduleContext;
+        this.kotlinBuiltIns = moduleContext.getBuiltIns();
+        this.moduleDescriptor = moduleContext.getModule();
+        this.platformToKotlinClassMap = moduleContext.getPlatformToKotlinClassMap();
+        this.project = moduleContext.getProject();
+        this.storageManager = moduleContext.getStorageManager();
         this.bindingTrace = bindingTrace;
-        this.module = module;
-        this.kotlinBuiltIns = module.getBuiltIns();
-        this.platformToKotlinClassMap = module.getPlatformToKotlinClassMap();
         this.additionalCheckerProvider = additionalCheckerProvider;
         this.symbolUsageValidator = additionalCheckerProvider.getSymbolUsageValidator();
         this.dynamicTypesSettings = dynamicTypesSettings;
@@ -147,7 +145,7 @@ public class InjectorForLazyLocalClassifierAnalyzer {
         this.lazyTopDownAnalyzer = new LazyTopDownAnalyzer();
         this.noTopLevelDescriptorProvider = NoTopLevelDescriptorProvider.INSTANCE$;
         this.noFileScopeProvider = NoFileScopeProvider.INSTANCE$;
-        this.localLazyDeclarationResolver = new LocalLazyDeclarationResolver(globalContext, bindingTrace, localClassDescriptorHolder);
+        this.localLazyDeclarationResolver = new LocalLazyDeclarationResolver(moduleContext, bindingTrace, localClassDescriptorHolder);
         this.declarationScopeProviderForLocalClassifierAnalyzer = new DeclarationScopeProviderForLocalClassifierAnalyzer(localLazyDeclarationResolver, localClassDescriptorHolder);
         this.bodyResolver = new BodyResolver();
         this.annotationResolver = new AnnotationResolver();
@@ -162,13 +160,13 @@ public class InjectorForLazyLocalClassifierAnalyzer {
         this.qualifiedExpressionResolver = new QualifiedExpressionResolver();
         this.flexibleTypeCapabilitiesProvider = new FlexibleTypeCapabilitiesProvider();
         this.typeLazinessToken = new TypeLazinessToken();
-        this.typeResolver = new TypeResolver(annotationResolver, qualifiedExpressionResolver, module, flexibleTypeCapabilitiesProvider, storageManager, typeLazinessToken, dynamicTypesSettings);
+        this.typeResolver = new TypeResolver(annotationResolver, qualifiedExpressionResolver, moduleDescriptor, flexibleTypeCapabilitiesProvider, storageManager, typeLazinessToken, dynamicTypesSettings);
         this.forLoopConventionsChecker = new ForLoopConventionsChecker();
         this.fakeCallResolver = new FakeCallResolver(project, callResolver);
         this.functionDescriptorResolver = new FunctionDescriptorResolver(typeResolver, descriptorResolver, annotationResolver, storageManager, expressionTypingServices, kotlinBuiltIns);
         this.localClassifierAnalyzer = new LocalClassifierAnalyzer(descriptorResolver, functionDescriptorResolver, typeResolver, annotationResolver);
         this.multiDeclarationResolver = new MultiDeclarationResolver(fakeCallResolver, descriptorResolver, typeResolver, symbolUsageValidator);
-        this.reflectionTypes = new ReflectionTypes(module);
+        this.reflectionTypes = new ReflectionTypes(moduleDescriptor);
         this.valueParameterResolver = new ValueParameterResolver(additionalCheckerProvider, expressionTypingServices);
         this.statementFilter = new StatementFilter();
         this.candidateResolver = new CandidateResolver();
@@ -189,7 +187,7 @@ public class InjectorForLazyLocalClassifierAnalyzer {
         this.lazyTopDownAnalyzer.setDeclarationScopeProvider(declarationScopeProviderForLocalClassifierAnalyzer);
         this.lazyTopDownAnalyzer.setFileScopeProvider(noFileScopeProvider);
         this.lazyTopDownAnalyzer.setLazyDeclarationResolver(localLazyDeclarationResolver);
-        this.lazyTopDownAnalyzer.setModuleDescriptor(module);
+        this.lazyTopDownAnalyzer.setModuleDescriptor(moduleDescriptor);
         this.lazyTopDownAnalyzer.setOverloadResolver(overloadResolver);
         this.lazyTopDownAnalyzer.setOverrideResolver(overrideResolver);
         this.lazyTopDownAnalyzer.setTopLevelDescriptorProvider(noTopLevelDescriptorProvider);
@@ -242,7 +240,7 @@ public class InjectorForLazyLocalClassifierAnalyzer {
         expressionTypingComponents.setExpressionTypingServices(expressionTypingServices);
         expressionTypingComponents.setForLoopConventionsChecker(forLoopConventionsChecker);
         expressionTypingComponents.setFunctionDescriptorResolver(functionDescriptorResolver);
-        expressionTypingComponents.setGlobalContext(globalContext);
+        expressionTypingComponents.setGlobalContext(moduleContext);
         expressionTypingComponents.setLocalClassifierAnalyzer(localClassifierAnalyzer);
         expressionTypingComponents.setMultiDeclarationResolver(multiDeclarationResolver);
         expressionTypingComponents.setPlatformToKotlinClassMap(platformToKotlinClassMap);

@@ -44,7 +44,7 @@ import org.jetbrains.kotlin.codegen.KotlinCodegenFacade;
 import org.jetbrains.kotlin.codegen.state.GenerationState;
 import org.jetbrains.kotlin.config.CompilerConfiguration;
 import org.jetbrains.kotlin.context.ContextPackage;
-import org.jetbrains.kotlin.context.GlobalContextImpl;
+import org.jetbrains.kotlin.context.ModuleContext;
 import org.jetbrains.kotlin.descriptors.ScriptDescriptor;
 import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider;
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
@@ -110,14 +110,7 @@ public class ReplInterpreter {
         this.trace = new CliLightClassGenerationSupport.NoScopeRecordCliBindingTrace();
         this.module = TopDownAnalyzerFacadeForJVM.createJavaModule("<repl>");
 
-        GlobalContextImpl context = ContextPackage.GlobalContext();
-
-        TopDownAnalysisParameters topDownAnalysisParameters = TopDownAnalysisParameters.create(
-                context.getStorageManager(),
-                context.getExceptionTracker(),
-                false,
-                true
-        );
+        ModuleContext context = ContextPackage.ModuleContext(module, project);
 
         scriptDeclarationFactory = new ScriptMutableDeclarationProviderFactory();
 
@@ -130,16 +123,14 @@ public class ReplInterpreter {
         };
 
         InjectorForReplWithJava injector = new InjectorForReplWithJava(
-                project,
-                topDownAnalysisParameters,
+                context,
                 trace,
-                module,
                 scriptDeclarationFactory,
                 ProjectScope.getAllScope(project),
                 scopeProvider
         );
 
-        this.topDownAnalysisContext = new TopDownAnalysisContext(topDownAnalysisParameters, DataFlowInfo.EMPTY);
+        this.topDownAnalysisContext = new TopDownAnalysisContext(TopDownAnalysisMode.LocalDeclarations, DataFlowInfo.EMPTY);
         this.topDownAnalyzer = injector.getLazyTopDownAnalyzerForTopLevel();
         this.resolveSession = injector.getResolveSession();
 
@@ -355,10 +346,10 @@ public class ReplInterpreter {
     @Nullable
     private ScriptDescriptor doAnalyze(@NotNull JetFile psiFile, @NotNull MessageCollector messageCollector) {
         scriptDeclarationFactory.setDelegateFactory(
-                new FileBasedDeclarationProviderFactory(topDownAnalysisContext.getStorageManager(), Collections.singletonList(psiFile)));
+                new FileBasedDeclarationProviderFactory(resolveSession.getStorageManager(), Collections.singletonList(psiFile)));
 
         TopDownAnalysisContext context = topDownAnalyzer.analyzeDeclarations(
-                topDownAnalysisContext.getTopDownAnalysisParameters(),
+                topDownAnalysisContext.getTopDownAnalysisMode(),
                 Collections.singletonList(psiFile)
         );
 

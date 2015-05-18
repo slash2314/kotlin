@@ -16,13 +16,13 @@
 
 package org.jetbrains.kotlin.di;
 
+import org.jetbrains.kotlin.context.ModuleContext;
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
+import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import com.intellij.openapi.project.Project;
-import org.jetbrains.kotlin.context.GlobalContext;
 import org.jetbrains.kotlin.storage.StorageManager;
 import org.jetbrains.kotlin.resolve.BindingTrace;
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
-import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap;
 import org.jetbrains.kotlin.resolve.AdditionalCheckerProvider;
 import org.jetbrains.kotlin.resolve.validation.SymbolUsageValidator;
 import org.jetbrains.kotlin.resolve.StatementFilter;
@@ -63,13 +63,13 @@ import javax.annotation.PreDestroy;
 @SuppressWarnings("all")
 public class InjectorForBodyResolve {
 
+    private final ModuleContext moduleContext;
+    private final KotlinBuiltIns kotlinBuiltIns;
+    private final ModuleDescriptor moduleDescriptor;
+    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final Project project;
-    private final GlobalContext globalContext;
     private final StorageManager storageManager;
     private final BindingTrace bindingTrace;
-    private final ModuleDescriptor moduleDescriptor;
-    private final KotlinBuiltIns kotlinBuiltIns;
-    private final PlatformToKotlinClassMap platformToKotlinClassMap;
     private final AdditionalCheckerProvider additionalCheckerProvider;
     private final SymbolUsageValidator symbolUsageValidator;
     private final StatementFilter statementFilter;
@@ -105,20 +105,18 @@ public class InjectorForBodyResolve {
     private final ScriptBodyResolver scriptBodyResolver;
 
     public InjectorForBodyResolve(
-        @NotNull Project project,
-        @NotNull GlobalContext globalContext,
+        @NotNull ModuleContext moduleContext,
         @NotNull BindingTrace bindingTrace,
-        @NotNull ModuleDescriptor moduleDescriptor,
         @NotNull AdditionalCheckerProvider additionalCheckerProvider,
         @NotNull StatementFilter statementFilter
     ) {
-        this.project = project;
-        this.globalContext = globalContext;
-        this.storageManager = globalContext.getStorageManager();
+        this.moduleContext = moduleContext;
+        this.kotlinBuiltIns = moduleContext.getBuiltIns();
+        this.moduleDescriptor = moduleContext.getModule();
+        this.platformToKotlinClassMap = moduleContext.getPlatformToKotlinClassMap();
+        this.project = moduleContext.getProject();
+        this.storageManager = moduleContext.getStorageManager();
         this.bindingTrace = bindingTrace;
-        this.moduleDescriptor = moduleDescriptor;
-        this.kotlinBuiltIns = moduleDescriptor.getBuiltIns();
-        this.platformToKotlinClassMap = moduleDescriptor.getPlatformToKotlinClassMap();
         this.additionalCheckerProvider = additionalCheckerProvider;
         this.symbolUsageValidator = additionalCheckerProvider.getSymbolUsageValidator();
         this.statementFilter = statementFilter;
@@ -194,7 +192,7 @@ public class InjectorForBodyResolve {
         expressionTypingComponents.setExpressionTypingServices(expressionTypingServices);
         expressionTypingComponents.setForLoopConventionsChecker(forLoopConventionsChecker);
         expressionTypingComponents.setFunctionDescriptorResolver(functionDescriptorResolver);
-        expressionTypingComponents.setGlobalContext(globalContext);
+        expressionTypingComponents.setGlobalContext(moduleContext);
         expressionTypingComponents.setLocalClassifierAnalyzer(localClassifierAnalyzer);
         expressionTypingComponents.setMultiDeclarationResolver(multiDeclarationResolver);
         expressionTypingComponents.setPlatformToKotlinClassMap(platformToKotlinClassMap);
