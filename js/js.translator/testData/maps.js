@@ -52,6 +52,16 @@
         return this.containsAll_4fm7v2$(o);
     }
 
+    function hashSetHashCode() {
+        var h = 0;
+        var i = this.iterator();
+        while (i.hasNext()) {
+            var obj = i.next();
+            h += Kotlin.hashCode(obj);
+        }
+        return h;
+    }
+
     /** @const */
     var FUNCTION = "function";
     var arrayRemoveAt = (typeof Array.prototype.splice == FUNCTION) ?
@@ -98,6 +108,10 @@
                 return Object.prototype.toString.call(obj);
             }
         }
+    }
+
+    function mapEntryHashCode(key, value) {
+        return Kotlin.hashCode(key) ^ Kotlin.hashCode(value);
     }
 
     function equals_fixedValueHasEquals(fixedValue, variableValue) {
@@ -414,7 +428,18 @@
             }
 
             return result;
-        }
+        };
+
+        this.hashCode = function() {
+            var h = 0;
+            var entries = this._entries();
+            var i = entries.length;
+            while (i--) {
+                var entry = entries[i];
+                h += mapEntryHashCode(entry[0], entry[1]);
+            }
+            return h;
+        };
     };
 
     Kotlin.HashTable = Hashtable;
@@ -693,6 +718,7 @@
         /** @lends {Kotlin.LinkedHashSet.prototype} */
         {
             equals_za3rmp$: hashSetEquals,
+            hashCode: hashSetHashCode,
             size: function () {
                 return this.map.size()
             },
@@ -733,12 +759,18 @@
         /** @lends SetIterator.prototype */
         {
             next: function () {
+                if (!this.hasNext()) {
+                    throw new Kotlin.NoSuchElementException();
+                }
                 return this.keys[this.index++];
             },
             hasNext: function () {
                 return this.index < this.keys.length;
             },
             remove: function () {
+                if (this.index === 0) {
+                    throw Kotlin.IllegalStateException();
+                }
                 this.set.remove_za3rmp$(this.keys[this.index - 1]);
             }
     });
@@ -958,6 +990,8 @@
             }
             return true;
         };
+
+        this.hashCode = hashSetHashCode;
     }
 
     lazyInitClasses.HashSet = Kotlin.createClass(
