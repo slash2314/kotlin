@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.idea.refactoring.move.moveTopLevelDeclarations.MoveK
 import org.jetbrains.kotlin.idea.refactoring.move.moveTopLevelDeclarations.MoveKotlinTopLevelDeclarationsProcessor
 import org.jetbrains.kotlin.idea.refactoring.move.moveTopLevelDeclarations.Mover
 import org.jetbrains.kotlin.idea.refactoring.move.postProcessMoveUsages
+import org.jetbrains.kotlin.idea.refactoring.move.updatePackageDirective
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.JetFile
 import org.jetbrains.kotlin.psi.JetNamedDeclaration
@@ -60,17 +61,18 @@ public class MoveKotlinFileHandler : MoveFileHandler() {
     ): List<UsageInfo>? {
         clearState()
 
-        if (psiFile !is JetFile || !psiFile.packageMatchesDirectory()) return null
+        if (psiFile !is JetFile || !(psiFile.updatePackageDirective ?: psiFile.packageMatchesDirectory())) return null
 
-        val newPackage = newParent.getPackage()
-        if (newPackage == null) return null
+        val newPackage = newParent.getPackage() ?: return null
 
         val packageNameInfo = PackageNameInfo(psiFile.getPackageFqName(), FqName(newPackage.getQualifiedName()))
+        if (packageNameInfo.oldPackageName == packageNameInfo.newPackageName) return null
         val project = psiFile.getProject()
 
         val declarationMoveProcessor = MoveKotlinTopLevelDeclarationsProcessor(
                 project,
                 MoveKotlinTopLevelDeclarationsOptions(
+                        sourceFile = psiFile,
                         elementsToMove = psiFile.getDeclarations().filterIsInstance<JetNamedDeclaration>(),
                         moveTarget = DeferredJetFileKotlinMoveTarget(project, packageNameInfo.newPackageName) {
                             MoveFilesOrDirectoriesUtil.doMoveFile(psiFile, newParent)
@@ -93,10 +95,13 @@ public class MoveKotlinFileHandler : MoveFileHandler() {
 
     override fun updateMovedFile(file: PsiFile) {
         if (file !is JetFile) return
+
+        file.updatePackageDirective = null
         val packageNameInfo = packageNameInfo ?: return
 
-        postProcessMoveUsages(file.getInternalReferencesToUpdateOnPackageNameChange(packageNameInfo))
+        val internalUsages = file.getInternalReferencesToUpdateOnPackageNameChange(packageNameInfo)
         file.getPackageDirective()?.setFqName(packageNameInfo.newPackageName)
+        postProcessMoveUsages(internalUsages)
     }
 
     override fun retargetUsages(usageInfos: List<UsageInfo>?, oldToNewMap: Map<PsiElement, PsiElement>?) {
