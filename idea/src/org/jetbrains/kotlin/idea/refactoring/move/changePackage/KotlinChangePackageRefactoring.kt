@@ -42,6 +42,7 @@ public class KotlinChangePackageRefactoring(val file: JetFile) {
         val declarationProcessor = MoveKotlinTopLevelDeclarationsProcessor(
                 project,
                 MoveKotlinTopLevelDeclarationsOptions(
+                        sourceFile = file,
                         elementsToMove = file.getDeclarations().filterIsInstance<JetNamedDeclaration>(),
                         moveTarget = object: KotlinMoveTarget {
                             override val packageWrapper = PackageWrapper(file.getManager(), newFqName.asString())
@@ -61,8 +62,8 @@ public class KotlinChangePackageRefactoring(val file: JetFile) {
         val internalUsages = file.getInternalReferencesToUpdateOnPackageNameChange(PackageNameInfo(currentFqName, newFqName))
 
         project.executeWriteCommand("Change file's package to '${newFqName.asString()}'") {
-            postProcessMoveUsages(internalUsages)
             packageDirective.setFqName(newFqName)
+            postProcessMoveUsages(internalUsages)
             project.runWithElementsToShortenIsEmptyIgnored { declarationProcessor.execute(declarationUsages) }
         }
     }

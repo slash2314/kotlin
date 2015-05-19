@@ -16,15 +16,31 @@
 
 package org.jetbrains.kotlin.idea.refactoring.move
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.CommandProcessor
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Comparing
+import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
+import com.intellij.refactoring.RefactoringBundle
+import com.intellij.refactoring.RefactoringSettings
+import com.intellij.refactoring.copy.CopyFilesOrDirectoriesHandler
+import com.intellij.refactoring.move.MoveCallback
+import com.intellij.refactoring.move.MoveHandler
+import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesDialog
+import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesProcessor
+import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesUtil
 import com.intellij.refactoring.move.moveMembers.MockMoveMembersOptions
 import com.intellij.refactoring.move.moveMembers.MoveMemberHandler
 import com.intellij.refactoring.move.moveMembers.MoveMembersProcessor
+import com.intellij.refactoring.util.CommonRefactoringUtil
 import com.intellij.refactoring.util.MoveRenameUsageInfo
 import com.intellij.refactoring.util.NonCodeUsageInfo
 import com.intellij.usageView.UsageInfo
+import com.intellij.util.Function
 import com.intellij.util.IncorrectOperationException
 import org.jetbrains.kotlin.asJava.namedUnwrappedElement
 import org.jetbrains.kotlin.asJava.unwrapped
@@ -35,10 +51,13 @@ import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
 import org.jetbrains.kotlin.idea.codeInsight.JetFileReferencesResolver
 import org.jetbrains.kotlin.idea.refactoring.fqName.isImported
+import org.jetbrains.kotlin.idea.refactoring.move.moveTopLevelDeclarations.ui.MoveFilesOrDirectoriesDialogWithKotlinOptions
 import org.jetbrains.kotlin.idea.references.JetReference
 import org.jetbrains.kotlin.idea.references.JetSimpleNameReference
 import org.jetbrains.kotlin.idea.references.JetSimpleNameReference.ShorteningMode
 import org.jetbrains.kotlin.idea.util.ImportInsertHelper
+import org.jetbrains.kotlin.idea.util.application.executeCommand
+import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
@@ -52,12 +71,11 @@ import java.util.Comparator
 public class PackageNameInfo(val oldPackageName: FqName, val newPackageName: FqName)
 
 public fun JetElement.getInternalReferencesToUpdateOnPackageNameChange(packageNameInfo: PackageNameInfo): List<UsageInfo> {
-    val file = getContainingFile() as? JetFile
-    if (file == null) return Collections.emptyList()
+    val file = getContainingFile() as? JetFile ?: return listOf()
 
     val importPaths = file.getImportDirectives().map { it.getImportPath() }.filterNotNull()
 
-    [tailRecursive] fun isImported(descriptor: DeclarationDescriptor): Boolean {
+    @tailRecursive fun isImported(descriptor: DeclarationDescriptor): Boolean {
         val fqName = DescriptorUtils.getFqName(descriptor).let { if (it.isSafe()) it.toSafe() else return@isImported false }
         if (importPaths.any { fqName.isImported(it, false) }) return true
 
@@ -156,10 +174,14 @@ fun createMoveUsageInfoIfPossible(
     return MoveRenameUsageInfo(element, reference, startOffset, endOffset, referencedElement, false)
 }
 
-public fun JetNamedDeclaration.getFileNameAfterMove(): String? {
-    return (getContainingFile() as? JetFile)?.let { file ->
-        if (file.getDeclarations().size() > 1) "${getName()}.${JetFileType.EXTENSION}" else file.getName()
-    }
+public fun guessNewFileName(sourceFile: JetFile, declarationsToMove: Collection<JetNamedDeclaration>): String? {
+    assert(sourceFile.getDeclarations().containsAll(declarationsToMove))
+
+    if (declarationsToMove.isEmpty()) return null
+    if (sourceFile.getDeclarations().size() == declarationsToMove.size()) return sourceFile.getName()
+
+    val representative = declarationsToMove.firstOrNull { it is JetClassOrObject } ?: declarationsToMove.first()
+    return "${representative.getName()}.${JetFileType.EXTENSION}"
 }
 
 // returns true if successful
@@ -178,7 +200,7 @@ private fun updateJavaReference(reference: PsiReferenceExpression, oldElement: P
 
         val newClass = newElement.getContainingClass()
         if (newClass != null && reference.getQualifierExpression() != null) {
-            val mockMoveMembersOptions = MockMoveMembersOptions(newClass.getQualifiedName(), array(newElement))
+            val mockMoveMembersOptions = MockMoveMembersOptions(newClass.getQualifiedName(), arrayOf(newElement))
             val moveMembersUsageInfo = MoveMembersProcessor.MoveMembersUsageInfo(
                     newElement, reference.getElement(), newClass, reference.getQualifierExpression(), reference)
             val moveMemberHandler = MoveMemberHandler.EP_NAME.forLanguage(reference.getElement().getLanguage())
@@ -257,4 +279,74 @@ fun postProcessMoveUsages(usages: List<UsageInfo>,
     }
 
     return nonCodeUsages
+}
+
+var JetFile.updatePackageDirective: Boolean? by UserDataProperty(Key.create("UPDATE_PACKAGE_DIRECTIVE"))
+
+// Mostly copied from MoveFilesOrDirectoriesUtil.doMove()
+public fun moveFilesOrDirectories(
+        project: Project,
+        elements: Array<PsiElement>,
+        targetElement: PsiElement?,
+        moveCallback: (() -> Unit)? = null
+) {
+    elements.forEach { if (it !is PsiFile && it !is PsiDirectory) throw IllegalArgumentException("unexpected element type: " + it) }
+
+    val targetDirectory = MoveFilesOrDirectoriesUtil.resolveToDirectory(project, targetElement)
+    if (targetElement != null && targetDirectory == null) return
+
+    val initialTargetDirectory = MoveFilesOrDirectoriesUtil.getInitialTargetDirectory(targetDirectory, elements)
+
+    fun doRun(moveDialog: MoveFilesOrDirectoriesDialog?) {
+        fun closeDialog() {
+            moveDialog?.close(DialogWrapper.CANCEL_EXIT_CODE)
+        }
+
+        project.executeCommand(MoveHandler.REFACTORING_NAME) {
+            val selectedDir = if (moveDialog != null) moveDialog.getTargetDirectory() else initialTargetDirectory
+            val updatePackageDirective = (moveDialog as? MoveFilesOrDirectoriesDialogWithKotlinOptions)?.updatePackageDirective
+
+            try {
+                val choice = if (elements.size() > 1 || elements[0] is PsiDirectory) intArrayOf(-1) else null
+                val elementsToMove = elements.filterNot {
+                    it is PsiFile
+                    && runWriteAction { CopyFilesOrDirectoriesHandler.checkFileExist(selectedDir, choice, it, it.getName(), "Move") }
+                }
+
+                elementsToMove.forEach {
+                    MoveFilesOrDirectoriesUtil.checkMove(it, selectedDir)
+                    (it as? JetFile)?.let { it.updatePackageDirective = updatePackageDirective }
+                }
+
+                if (elementsToMove.isNotEmpty()) {
+                    MoveFilesOrDirectoriesProcessor(
+                            project,
+                            elementsToMove.toTypedArray(),
+                            selectedDir,
+                            RefactoringSettings.getInstance().MOVE_SEARCH_FOR_REFERENCES_FOR_FILE,
+                            false,
+                            false,
+                            moveCallback,
+                            ::closeDialog
+                    ).run()
+                }
+                else {
+                    closeDialog()
+                }
+            }
+            catch (e: IncorrectOperationException) {
+                CommonRefactoringUtil.showErrorMessage(RefactoringBundle.message("error.title"), e.getMessage(), "refactoring.moveFile", project)
+            }
+        }
+    }
+
+    if (ApplicationManager.getApplication().isUnitTestMode()) {
+        doRun(null)
+        return
+    }
+
+    with(MoveFilesOrDirectoriesDialogWithKotlinOptions(project, ::doRun)) {
+        setData(elements, initialTargetDirectory, "refactoring.moveFile")
+        show()
+    }
 }
